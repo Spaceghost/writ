@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -358,7 +358,7 @@
+     }
+     close(path);
+     char frame[WRIT_OWNER_FRAME_CAP];
+-    size_t used = writ_owner_format_provision(&st, (uint32_t)geteuid(), bytes, length, frame);
++    size_t used = writ_owner_format_provision(&st, (uint32_t)st.st_uid, bytes, length, frame);
+     if (!used) return fail_stop(s);
+     if (call(s, frame, used, reply, provision_outcome)) return -1;
+     s->provisioned = 1;

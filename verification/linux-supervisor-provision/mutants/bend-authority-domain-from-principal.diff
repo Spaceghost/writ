@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -160,7 +160,7 @@
+ 
+ def authority_of(+kind: U32, +who: U32, +domain: U32) -> Maybe<&2, Iss.Authority>:
+   match kind:
+-    case 1: Some{Iss.ReadAuthority{principal(who), T.ReadDomain{U32.to_nat(domain)}}}
++    case 1: Some{Iss.ReadAuthority{principal(who), T.ReadDomain{U32.to_nat(who)}}}
+     case 2: Some{Iss.WriteAuthority{principal(who), T.WriteDomain{U32.to_nat(domain)}}}
+     case _: None{}
+ 

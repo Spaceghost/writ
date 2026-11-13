@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -312,7 +312,7 @@
+ 
+ def install_checked(fault: Maybe<&2, ProvisionError>, +bytes: +List<U32>) -> Installed:
+   match fault:
+-    case Some{reason}: Refused{reason}
++    case Some{reason}: install_read(decode(bytes))
+     case None{}: install_read(decode(bytes))
+ 
+ # Public entry point: the file facts first (the bytes of a file that fails them

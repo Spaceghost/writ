@@ -1,0 +1,2 @@
+PASS: SupervisorProvision canary record installs its role map over the canary issuer root
+FAIL: SupervisorProvision refuses unprotected configuration facts before decoding

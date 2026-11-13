@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -298,7 +298,7 @@
+       first_fault(Bool.not(C.valid_roles(roles)), RolesInvalid{},
+         first_fault(roles_empty(roles), RolesEmpty{},
+           first_fault(Bool.not(roles_backed(roles, directory)), RoleWithoutAuthority{},
+-            first_fault(Bool.not(Iss.placements_valid(placements)), PlacementsInvalid{}, None{}))))
++            first_fault(False{}, PlacementsInvalid{}, None{}))))
+ 
+ def install_record(fault: Maybe<&2, ProvisionError>, record: Record) -> Installed:
+   match fault record:

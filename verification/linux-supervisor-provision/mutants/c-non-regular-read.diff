@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -343,7 +343,7 @@
+     /* Only a regular file is reopened (the same inode, through its O_PATH
+        descriptor) and read; for anything else Bend sees the facts and
+        refuses. */
+-    if (S_ISREG(st.st_mode)) {
++    if (1) {
+         char self[64];
+         snprintf(self, sizeof self, "/proc/self/fd/%d", path);
+         int fd = open(self, O_RDONLY | O_CLOEXEC | O_NONBLOCK | O_NOCTTY);

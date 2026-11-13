@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -101,7 +101,7 @@
+     struct sigaction dfl;
+     memset(&dfl, 0, sizeof dfl);
+     dfl.sa_handler = SIG_DFL;
+-    for (int sig = 1; sig < NSIG; ++sig) (void)sigaction(sig, &dfl, NULL);
++
+     /* A worker must not outlive the supervisor thread that launched it. */
+     if (prctl(PR_SET_PDEATHSIG, SIGKILL) || getppid() != parent) _exit(127);
+     sigset_t none;

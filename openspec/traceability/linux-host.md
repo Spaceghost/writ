@@ -199,9 +199,40 @@ native cases add evidence at that boundary for:
   number.
 
 The clock samples there are scripted because the synthetic issuer's times are
-not a host time base; nothing provisions a real issuer or role map, aligns
+not a host time base; nothing installs a real issuer, aligns
 `CLOCK_BOOTTIME` with grant times, restarts with continuity or binds a worker's
 role to its session. Host acceptance for these scenarios remains open.
+
+The [supervisor provisioning record](../../verification/linux-supervisor-provision/README.md)
+replaces the synthetic role-index-to-principal map with one installed from a
+protected configuration record ([SupervisorProvision.bend](../../hosts/linux/monitor/SupervisorProvision.bend)),
+and, through the driver's API, registers workers only as it launches them
+after provisioning. Which process holds which role index is still the caller's
+registration, so the LH-011 binding of each worker lifetime and session to its
+principal is not established. For LH-011
+("Local supervisor authority is explicitly provisioned") it adds, at the model
+and owned-process boundary only:
+
+- Bend checks in [SupervisorProvisionTests.bend](../../hosts/linux/monitor/SupervisorProvisionTests.bend):
+  `SupervisorProvision refuses unprotected configuration facts before decoding`,
+  `SupervisorProvision refuses invalid, empty or unbacked role maps and ambiguous placements`,
+  `SupervisorProvision adopts only a record whose root is the retained issuer's root`
+  and `SupervisorWire refuses unprovisioned frames, refused records and reprovisioning`.
+- Native cases: `protected_record_provisioned`, `group_writable_record_refused`,
+  `linked_record_refused`, `fifo_record_refused`, `foreign_root_record_refused`,
+  `symlink_record_not_followed`, `intermediate_symlink_not_followed`,
+  `record_outside_directory_refused`, `control_before_provision_fail_stop`,
+  `second_provision_fail_stop`, `launch_registers_worker` and
+  `launched_worker_clean`. The native refusals observe only
+  `PROVISION_REFUSED`; which check refused is shown by the Bend checks.
+
+File ownership, mode and link count are local facts, not an authenticated
+operator; the foreign-owner refusal is checked in Bend only, since an
+unprivileged test cannot create a file owned by another user. The issuer-root
+match is a consistency check, not authority, since the canary root is public.
+The record installs the role map; the issuer's
+approvals still come from the synthetic canary, not from authenticated
+submissions over the channel.
 
 ## Synthetic Rendezvous owner (LH-012, LH-013, LH-015 and LH-016)
 

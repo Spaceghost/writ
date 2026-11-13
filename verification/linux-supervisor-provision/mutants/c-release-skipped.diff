@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -79,7 +79,7 @@
+ void writ_supervisor_release(struct writ_supervisor *s)
+ {
+     for (size_t i = 0; i < s->workers; ++i)
+-        if (s->worker[i].owned) close(s->worker[i].pidfd);
++        (void)0;
+     s->workers = 0;
+ }
+ 

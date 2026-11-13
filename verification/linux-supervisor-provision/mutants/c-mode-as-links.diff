@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -295,7 +295,7 @@
+     if (length > WRIT_CHANNEL_PAYLOAD_MAX) return 0;
+     uint32_t links = st->st_nlink > UINT32_MAX ? UINT32_MAX : (uint32_t)st->st_nlink;
+     int used = snprintf(frame, WRIT_OWNER_FRAME_CAP, "LINUXSUP1\tPROVISION\t%" PRIu32 "\t%" PRIu32 "\t%" PRIu32 "\t%" PRIu32 "\t",
+-                        (uint32_t)st->st_mode, links, (uint32_t)st->st_uid, euid);
++                        links, (uint32_t)st->st_mode, (uint32_t)st->st_uid, euid);
+     if (used <= 0 || (size_t)used + 2 * length + 1 > WRIT_OWNER_FRAME_CAP) return 0;
+     return append_hex(frame, (size_t)used, bytes, length);
+ }

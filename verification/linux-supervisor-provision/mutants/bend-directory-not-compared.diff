@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -361,7 +361,7 @@
+ # Public entry point (exported for tests): the installed root is the root of
+ # `issuer` (same live stamp, directory and placements, in order).
+ def same_root(+root: Iss.State, +issuer: Iss.State) -> Bool:
+-  stamp_equal(Iss.live(root), Iss.live(issuer)) && authorities_equal(Iss.directory(root), Iss.directory(issuer))
++  stamp_equal(Iss.live(root), Iss.live(issuer)) && True{}
+     && placements_equal(Iss.placements(root), Iss.placements(issuer))
+ 
+ def retained_issuer(state: LH.State) -> Maybe<&2, Iss.State>:

@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorWire.bend
++++ b/hosts/linux/monitor/SupervisorWire.bend
+@@ -336,6 +336,8 @@
+       control(state, verdict, role, clock, now, argument)
+     case Request{"FRAME", 0, 0, clock, now, argument}:
+       frame(state, clock, now, argument)
++    case Request{"PROVISION", m, l, o, e, a}:
++      provision(state, m, l, o, e, a)
+     case Request{"DRAIN", 0, 0, 0, 0, "-"}:
+       apply(state, O.Drain{}, LH.UnavailableClock{})
+     case _:

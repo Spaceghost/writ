@@ -14,6 +14,11 @@ that pidfd reports exit; the test reaps it as killed by `SIGKILL`.
 The same record from role 2 (principal 102) or from an unregistered process is
 refused or denied, and nothing is stopped.
 
+Update: the role map is now installed from a protected provisioning record and
+workers are registered only as the driver launches them; see the
+[provisioning record](../linux-supervisor-provision/README.md). The 26 cases
+below are this record's own run, before that change.
+
 Current gap: the interpreter's starting owner is a **synthetic test
 provisioning module**, and the clock samples in these cases are scripted,
 because the synthetic issuer's grant times (110 to 120) are not a host time base.

@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -175,7 +175,7 @@
+   match words done:
+     case w True{}: AuthoritiesTaken{Iss.NoAuthorities{}, w}
+     case +kind <> +who <> +domain <> +rest False{}:
+-      authority_then(authority_of(kind, who, domain), U32.is_eq(who, 0),
++      authority_then(authority_of(kind, who, domain), False{},
+         take_authorities(rest, U32.is_eq(count, 1), (count - 1 : U32)))
+     case _ False{}: AuthoritiesBad{RecordLength{}}
+ 

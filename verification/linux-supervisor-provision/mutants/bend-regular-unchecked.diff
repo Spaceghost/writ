@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -120,7 +120,7 @@
+ def config_fault(facts: ConfigFacts) -> Maybe<&2, ProvisionError>:
+   match facts:
+     case ConfigFacts{+mode, +links, +owner, +euid}:
+-      first_fault(Bool.not(U32.is_eq(U32.and(mode, file_type_mask()), regular_file())), ConfigNotRegular{},
++      first_fault(False{}, ConfigNotRegular{},
+         first_fault(Bool.not(U32.is_eq(links, 1)), ConfigLinked{},
+           first_fault(Bool.not(U32.is_eq(owner, euid)), ConfigForeignOwner{},
+             first_fault(Bool.not(U32.is_eq(U32.and(mode, shared_write_bits()), 0)), ConfigWritable{}, None{}))))

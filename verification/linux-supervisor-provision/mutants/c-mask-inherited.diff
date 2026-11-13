@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -106,7 +106,7 @@
+     if (prctl(PR_SET_PDEATHSIG, SIGKILL) || getppid() != parent) _exit(127);
+     sigset_t none;
+     sigemptyset(&none);
+-    if (sigprocmask(SIG_SETMASK, &none, NULL)) _exit(127);
++
+     /* The worker must not inherit the channel, the interpreter's pipes or
+        any other supervisor descriptor. */
+     if (syscall(SYS_close_range, 3u, ~0u, 0u)) _exit(127);

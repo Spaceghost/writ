@@ -1193,6 +1193,21 @@ kind, and fail-stop on interpreter loss and on replies the owner never sends. Pr
 a synthetic test module and the clock samples are scripted; no real issuer,
 host time base, restart continuity or host qualification is established.
 
+The [supervisor provisioning record](verification/linux-supervisor-provision/README.md)
+installs that driver's role map from a protected configuration record
+(`SupervisorProvision.bend`, 8 Bend checks; all 23 Bend mutants fail). The
+driver resolves the file with `openat2` (no symlink, no escape, `O_PATH`) and
+forwards its `fstat` facts and bytes. Bend accepts only a regular,
+singly linked file owned by the supervisor's user and writable by no one else,
+holding a consistent record whose issuer root equals the retained issuer's.
+Workers are launched and registered by the driver only after provisioning. The
+owned-process test passes 41 cases; 19 of 21 C mutants fail, and the two
+survivors are reviewed only. The suite output differs from `ddc51b99` only by
+the new checks, the native CPU run is identical, and the existing-law proof
+passed with `--verdict`. File facts do not authenticate an operator, the issuer
+is still the synthetic canary, role processes are still registered by the
+caller, and no host is qualified.
+
 The [linear stored-approval lookup record](verification/issuance-linear-lookup/README.md)
 replaces a quadratic duplicate scan in `Issuance.find_stored` with one pass
 that returns the same answer for every list. Six direct lookup checks and two

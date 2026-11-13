@@ -1,5 +1,7 @@
 import Base
 import ./SupervisorOwner.bend as O
+import ./SupervisorProvision.bend as SP
+import ./LocalChannel.bend as C
 import ./LinuxHost.bend as LH
 import ../../../HostPrimitives.bend as P
 import ../../../contrib/rclone/bend/Wire.bend as Wire
@@ -10,13 +12,23 @@ import ../../../contrib/rclone/bend/Wire.bend as Wire
 # exposes `dispatch(state, frame)`, `next(step)` and `reply(step)`; a
 # provisioning module supplies `initial()`.
 #
+# Provisioning. An interpreter started from `unprovisioned` holds the owner's
+# state with no role map. Its first frame must be `PROVISION`; the role map is
+# installed only if `SupervisorProvision` accepts the configuration facts and
+# record and the record's issuer root is the retained issuer's root. A refusal
+# replies `PROVISION_REFUSED` with containment and stops the interpreter, so
+# the profile stays incomplete. Any other first frame, and any later
+# `PROVISION`, is `ERROR`: a role map is installed once and never replaced.
+#
 # Authority direction. The driver only forwards native facts: the receiver's
 # verdict number and role word for one datagram, one clock reading, and the
 # datagram's bytes. Every decision (attribution, decoding, issuer checks, clock
 # ordering, containment, which workers stop) is `SupervisorOwner.step`'s. The
 # reply names an outcome, whether whole-instance containment is required, and
 # the effects the driver may execute, nothing else. No frame can install an
-# issuer, replace the role map or name a principal.
+# issuer or name a principal, and only the first frame of an unprovisioned
+# interpreter can install the role map (see Provisioning).
+#
 #
 # Request: seven TAB-separated ASCII fields, LF excluded, at most 8300 bytes:
 #   LINUXSUP1 <op> <verdict> <role> <clock> <now> <argument>
@@ -26,6 +38,9 @@ import ../../../contrib/rclone/bend/Wire.bend as Wire
 #   CONTROL <verdict> <role> <clock> <now> <payload hex>   one channel datagram
 #   FRAME   0 0 <clock> <now> <payload hex>                one monitor frame
 #   DRAIN   0 0 0 0 -                                      supervisor cleanup
+#   PROVISION <mode> <links> <owner> <euid> <record hex>   protected bootstrap
+# For PROVISION the four numeric fields are the configuration file's
+# `st_mode`, `st_nlink`, `st_uid` and the supervisor's effective user ID.
 # Payload hex is lowercase, at most `max_payload()` bytes (the receiver's
 # maximum record), and may be empty.
 #
@@ -41,12 +56,12 @@ import ../../../contrib/rclone/bend/Wire.bend as Wire
 # `EXHAUSTED`, which also stops; the bridge (supervisor-policy.mjs) refuses
 # that frame itself, so through the bridge the transport stops instead.
 #
-# Gap: nothing here provisions the owner. `initial()` lives in a provisioning
-# module; today only the synthetic test module SupervisorDriverModule.bend
-# supplies one.
+# Gap: the issuer the owner retains is still synthetic. `initial()` lives in a
+# provisioning module; today only the test module SupervisorDriverModule.bend
+# supplies one, holding the canary issuer and no role map.
 
 type State is Data:
-  State{owner: O.Owner, authority: P.AdmissionAuthority, sequence: U32, stopped: Bool}
+  State{owner: O.Owner, authority: P.AdmissionAuthority, sequence: U32, stopped: Bool, ready: Bool}
 
 type Request is Data:
   Request{operation: String, verdict: U32, role: U32, clock: U32, now: U32, argument: String}
@@ -60,18 +75,27 @@ def max_payload() -> U32:
 def max_requests() -> U32:
   100000
 
-# Public entry point for a provisioning module: the interpreter state for one
-# owner. Constructing it is not authentication.
+# Exported for tests: the interpreter state for an owner whose role map is
+# already in place. Constructing it is not authentication.
 def provisioned(owner: O.Owner, authority: P.AdmissionAuthority) -> State:
-  State{owner, authority, 0, False{}}
+  State{owner, authority, 0, False{}, True{}}
+
+# Public entry point for a provisioning module: an interpreter over `state`
+# with no role map, which accepts only `PROVISION` first.
+def unprovisioned(state: LH.State, authority: P.AdmissionAuthority) -> State:
+  State{O.Owner{C.NoRoles{}, state}, authority, 0, False{}, False{}}
 
 def next(step: Step) -> State:
   match step:
     case Step{state, _, _, _}: state
 
+def ready(state: State) -> Bool:
+  match state:
+    case State{_, _, _, _, +ready}: ready
+
 def sequence(state: State) -> U32:
   match state:
-    case State{_, _, +sequence, _}: sequence
+    case State{_, _, +sequence, _, _}: sequence
 
 def contain_digit(contain: Bool) -> String:
   match contain:
@@ -85,15 +109,15 @@ def reply(step: Step) -> String:
 
 def stop(state: State) -> State:
   match state:
-    case State{owner, authority, sequence, _}: State{owner, authority, sequence, True{}}
+    case State{owner, authority, sequence, _, ready}: State{owner, authority, sequence, True{}, ready}
 
 def advance(state: State) -> State:
   match state:
-    case State{owner, authority, sequence, stopped}: State{owner, authority, (sequence + 1 : U32), stopped}
+    case State{owner, authority, sequence, stopped, ready}: State{owner, authority, (sequence + 1 : U32), stopped, ready}
 
 def stopped(state: State) -> Bool:
   match state:
-    case State{_, _, _, +stopped}: stopped
+    case State{_, _, _, +stopped, _}: stopped
 
 def failed(state: State, outcome: String) -> Step:
   Step{stop(state), outcome, True{}, "-"}
@@ -243,17 +267,17 @@ def outcome_name(result: O.OwnerResult) -> String:
 
 def stepped(state: State, +owned: O.OwnerStep) -> Step:
   match state owned:
-    case State{_, authority, sequence, stopped} O.OwnerStep{owner, +result}:
-      Step{State{owner, authority, sequence, stopped}, outcome_name(result),
+    case State{_, authority, sequence, stopped, ready} O.OwnerStep{owner, +result}:
+      Step{State{owner, authority, sequence, stopped, ready}, outcome_name(result),
         O.requires_containment(result), render_effects(O.effects(result))}
 
 def owner_of(+state: State) -> O.Owner:
   match state:
-    case State{owner, _, _, _}: owner
+    case State{owner, _, _, _, _}: owner
 
 def authority_of(+state: State) -> P.AdmissionAuthority:
   match state:
-    case State{_, authority, _, _}: authority
+    case State{_, authority, _, _, _}: authority
 
 def apply(+state: State, event: O.OwnerInput, sample: LH.ClockSample) -> Step:
   stepped(state, O.step(owner_of(state), event, sample, authority_of(state)))
@@ -279,6 +303,32 @@ def frame_read(+state: State, read: Maybe<&2, LH.ClockSample>, bytes: Maybe<&2, 
 def frame(+state: State, clock: U32, now: U32, argument: String) -> Step:
   frame_read(state, sample(clock, now), payload(argument))
 
+def adopted(+state: State, adoption: SP.Adoption) -> Step:
+  match state adoption:
+    case State{_, authority, sequence, stopped, _} SP.Adopted{owner}:
+      Step{State{owner, authority, sequence, stopped, True{}}, "PROVISIONED", False{}, "-"}
+    case _ SP.NotAdopted{_}:
+      failed(state, "PROVISION_REFUSED")
+
+def owner_state(+state: State) -> LH.State:
+  O.Owner.state(owner_of(state))
+
+def provision_read(+state: State, facts: SP.ConfigFacts, bytes: Maybe<&2, +List<U32>>) -> Step:
+  match bytes:
+    case Some{+record}: adopted(state, SP.adopt(owner_state(state), SP.install(facts, record)))
+    case None{}: failed(state, "ERROR")
+
+def provision(+state: State, mode: U32, links: U32, owner: U32, euid: U32, argument: String) -> Step:
+  provision_read(state, SP.ConfigFacts{mode, links, owner, euid}, payload(argument))
+
+# Before provisioning only PROVISION is accepted.
+def first(+state: State, request: Request) -> Step:
+  match request:
+    case Request{"PROVISION", mode, links, owner, euid, argument}:
+      provision(state, mode, links, owner, euid, argument)
+    case _:
+      failed(state, "ERROR")
+
 # The drain takes no clock; the sample passed is never read by `Drain`.
 def command(+state: State, request: Request) -> Step:
   match request:
@@ -291,12 +341,17 @@ def command(+state: State, request: Request) -> Step:
     case _:
       failed(state, "ERROR")
 
+def phase(+state: State, is_ready: Bool, request: Request) -> Step:
+  match is_ready:
+    case True{}: command(state, request)
+    case False{}: first(state, request)
+
 def parsed(+state: State, request: Maybe<&2, Request>) -> Step:
   match request:
     case None{}:
       failed(state, "ERROR")
     case Some{request}:
-      command(state, request)
+      phase(state, ready(state), request)
 
 def dispatch_phase(+state: State, line: String, is_stopped: Bool) -> Step:
   match is_stopped:

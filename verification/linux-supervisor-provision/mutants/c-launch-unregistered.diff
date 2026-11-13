@@ -1,0 +1,10 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -136,7 +136,6 @@
+     int saved = errno;
+     (void)sigprocmask(SIG_SETMASK, &old, NULL);
+     if (child < 0) { errno = saved; return -1; }
+-    register_worker(s, worker, pidfd, 1);
+     *pid = (pid_t)child;
+     return pidfd;
+ }

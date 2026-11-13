@@ -45,6 +45,7 @@ import ./hosts/linux/monitor/LinuxSessionLossTests.bend as LinuxSessionLoss
 import ./hosts/linux/monitor/LocalChannelTests.bend as LocalChannel
 import ./hosts/linux/monitor/SupervisorOwnerTests.bend as SupervisorOwner
 import ./hosts/linux/monitor/SupervisorWireTests.bend as SupervisorWire
+import ./hosts/linux/monitor/SupervisorProvisionTests.bend as SupervisorProvision
 import ./FacadeTests.bend as Facade
 import ./LocalSupervisorTests.bend as LocalSupervisor
 import ./IssuanceTests.bend as Issuance
@@ -65,6 +66,7 @@ def joint_owner_tests(+stages: LinuxJointOwner.Stages) -> IO(Unit):
     LocalChannel.main()
     SupervisorOwner.owner_checks(stages)
     SupervisorWire.wire_checks(stages)
+    SupervisorProvision.provision_checks(stages)
 
 def linux_tests() -> IO(Unit):
   do IO<Unit>:

@@ -4,9 +4,13 @@
    Usage: supervisor-owner-test NODE BRIDGE MODULE FAKE (absolute paths; FAKE is
    supervisor-owner-fake.mjs, an explicitly malformed peer; BRIDGE is
    runtime/supervisor-policy.mjs, MODULE the generated
-   hosts/linux/monitor/SupervisorDriverModule.bend, a SYNTHETIC provisioning
-   module: role 1 is principal 101, which issued approval 5; role 2 is 102;
-   worker 1 holds a grant expiring at 120; the owner's clock is at 110).
+   hosts/linux/monitor/SupervisorDriverModule.bend: the SYNTHETIC canary
+   issuer, in which principal 101 issued approval 5 and worker 1 holds a grant
+   expiring at 120, with the owner's clock at 110 and no role map).
+   The role map comes from a provisioning record this test writes to a 0600
+   file in a private directory under $TMPDIR (or /tmp): role 1 is principal
+   101, role 2 is 102, over the canary issuer root. Worker 1 is launched by
+   the driver (this binary re-executed with --worker).
 
    Every process, socket and descriptor here is created by this test. It
    requests no privilege, signals only its own children (the drained worker
@@ -22,6 +26,7 @@
 
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <linux/sched.h>
 #include <poll.h>
 #include <signal.h>
@@ -30,6 +35,7 @@
 #include <string.h>
 #include <sys/prctl.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -73,6 +79,102 @@ static int count_own_fds(void)
 static const unsigned char revoke5[16] = { 1,0,0,0, 1,0,0,0, 1,0,0,0, 5,0,0,0 };
 static const unsigned char malformed[3] = { 1, 2, 3 };
 
+/* SupervisorProvisionTests.canary(): live 1/2/3, roles 1 -> 101 and 2 -> 102,
+   the canary directory (five authorities) and placements (four). */
+static const uint32_t canary_words[42] = {
+    1, 1, 2, 3, 2, 1, 101, 2, 102,
+    5, 1, 101, 5, 2, 102, 6, 1, 103, 9, 1, 104, 7, 2, 105, 5,
+    4, 1, 10, 4, 5, 1, 11, 4, 7, 2, 20, 8, 6, 2, 20, 9, 6
+};
+
+static int records = -1;          /* the private record directory */
+static int inheritable = -1;      /* a descriptor without close-on-exec */
+static char records_path[256];
+
+static void record_bytes(const uint32_t *words, size_t count, unsigned char *out)
+{
+    for (size_t i = 0; i < count; ++i)
+        for (unsigned int b = 0; b < 4; ++b) out[4 * i + b] = (unsigned char)(words[i] >> (8 * b));
+}
+
+static void write_record(const char *name, const unsigned char *bytes, size_t length, mode_t mode)
+{
+    int fd = openat(records, name, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW, 0600);
+    if (fd < 0) die(name);
+    if (write(fd, bytes, length) != (ssize_t)length || fchmod(fd, mode) || close(fd)) die(name);
+}
+
+static const char *const record_names[] = {
+    "canary", "writable", "linked", "linked-too", "fifo", "mismatch", "symlink", "oversized", "via"
+};
+
+/* At exit after a failure: remove what is left, ignoring errors. */
+static void discard_records(void)
+{
+    if (records < 0) return;
+    for (size_t i = 0; i < sizeof record_names / sizeof record_names[0]; ++i)
+        (void)unlinkat(records, record_names[i], 0);
+    (void)rmdir(records_path);
+}
+
+static void make_records(void)
+{
+    const char *base = getenv("TMPDIR");
+    if (!base || base[0] != '/') base = "/tmp";
+    if (snprintf(records_path, sizeof records_path, "%s/writ-provision-XXXXXX", base) >= (int)sizeof records_path) {
+        errno = ENAMETOOLONG;
+        die("record directory");
+    }
+    if (!mkdtemp(records_path)) die("mkdtemp");
+    records = open(records_path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (records < 0) { (void)rmdir(records_path); die("open record directory"); }
+    if (atexit(discard_records)) die("atexit");
+    unsigned char bytes[sizeof canary_words];
+    record_bytes(canary_words, 42, bytes);
+    write_record("canary", bytes, sizeof bytes, 0600);
+    write_record("writable", bytes, sizeof bytes, 0620);
+    write_record("linked", bytes, sizeof bytes, 0600);
+    if (linkat(records, "linked", records, "linked-too", 0)) die("linkat");
+    if (mkfifoat(records, "fifo", 0600)) die("mkfifoat");
+    uint32_t other[42];
+    memcpy(other, canary_words, sizeof other);
+    other[3] = 4; /* live stamp authority 4: not the canary issuer's root */
+    record_bytes(other, 42, bytes);
+    write_record("mismatch", bytes, sizeof bytes, 0600);
+    if (symlinkat("canary", records, "symlink")) die("symlinkat");
+    if (symlinkat(".", records, "via")) die("symlinkat via");
+    static unsigned char big[WRIT_CHANNEL_PAYLOAD_MAX + 1];
+    write_record("oversized", big, sizeof big, 0600);
+}
+
+static void remove_records(void)
+{
+    for (size_t i = 0; i < sizeof record_names / sizeof record_names[0]; ++i)
+        if (unlinkat(records, record_names[i], 0)) die("unlink record");
+    close(records);
+    records = -1;
+    if (rmdir(records_path)) die("rmdir record directory");
+}
+
+/* Re-executed worker: exits 12 unless the driver set its parent-death
+   signal to SIGKILL, 9 if it inherited any descriptor beyond 0-2, 10 if
+   SIGPIPE is still ignored (the test ignores it) and 11 if any signal is
+   blocked (the test blocks SIGUSR2); otherwise stops itself once so the test
+   sees the checks passed, then waits to be killed. */
+static _Noreturn void worker_main(void)
+{
+    int death = 0;
+    if (prctl(PR_GET_PDEATHSIG, &death) || death != SIGKILL) _exit(12);
+    alarm(CHILD_TIMEOUT_SECONDS);
+    if (count_own_fds() != 3) _exit(9);
+    struct sigaction old;
+    if (sigaction(SIGPIPE, NULL, &old) || old.sa_handler != SIG_DFL) _exit(10);
+    sigset_t mask;
+    if (sigprocmask(SIG_SETMASK, NULL, &mask) || sigismember(&mask, SIGUSR2)) _exit(11);
+    raise(SIGSTOP);
+    for (;;) pause();
+}
+
 /* ---- owned children ----
    Commands are one byte on a private SEQPACKET socket; the child replies 'k'
    after the send succeeded, 'e' otherwise.
@@ -91,7 +193,8 @@ static void child_loop(int cmd, int tx)
     }
 }
 
-struct child { int pidfd; int cmd; };
+/* `borrowed`: the pidfd belongs to the driver (a launched worker). */
+struct child { int pidfd; int cmd; int borrowed; };
 
 static struct child spawn(int tx)
 {
@@ -125,7 +228,7 @@ static struct child spawn(int tx)
         _exit(4);
     }
     close(pair[1]);
-    return (struct child){ pidfd, pair[0] };
+    return (struct child){ pidfd, pair[0], 0 };
 }
 
 static void command(struct child *c, char op, const char *name)
@@ -170,8 +273,8 @@ static void retire(struct child *c)
         siginfo_t info;
         if (waitid(P_PIDFD, (id_t)c->pidfd, &info, WEXITED | WNOHANG)) die("waitid retire");
     }
-    close(c->pidfd);
-    close(c->cmd);
+    if (!c->borrowed) close(c->pidfd);
+    if (c->cmd >= 0) close(c->cmd);
     c->pidfd = c->cmd = -1;
 }
 
@@ -180,8 +283,8 @@ static void retire(struct child *c)
 static void settle(struct child *c, int reaped)
 {
     if (!reaped) { retire(c); return; }
-    close(c->pidfd);
-    close(c->cmd);
+    if (!c->borrowed) close(c->pidfd);
+    if (c->cmd >= 0) close(c->cmd);
     c->pidfd = c->cmd = -1;
 }
 
@@ -209,15 +312,34 @@ struct scenario {
     int channel;
     int fake;
     struct child a, b, c, w;
+    int worker_clean;   /* the launched worker saw only descriptors 0-2 */
+    int provisioned;    /* `provision` was sent and PROVISIONED */
 };
 
-static void begin_with(struct scenario *s, const struct writ_clock_sample *samples, size_t count,
-                       int with_fake)
+/* Launches worker `worker` through the driver and waits for its descriptor
+   check: stopped means it passed, exited means it failed. */
+static struct child launch(struct writ_supervisor *sup, uint32_t worker, int *clean)
+{
+    char *argv[] = { "supervisor-owner-worker", "--worker", NULL };
+    char *envp[] = { NULL };
+    pid_t pid;
+    int pidfd = writ_supervisor_launch_worker(sup, worker, "/proc/self/exe", argv, envp, &pid);
+    if (pidfd < 0) die("launch worker");
+    siginfo_t info;
+    memset(&info, 0, sizeof info);
+    if (waitid(P_PIDFD, (id_t)pidfd, &info, WSTOPPED | WEXITED | WNOWAIT)) die("waitid worker");
+    *clean = info.si_code == CLD_STOPPED;
+    if (*clean && syscall(SYS_pidfd_send_signal, pidfd, SIGCONT, NULL, 0)) die("continue worker");
+    return (struct child){ pidfd, -1, 1 };
+}
+
+static void begin_raw(struct scenario *s, const struct writ_clock_sample *samples, size_t count,
+                      int with_fake, const char *provision)
 {
     memset(s, 0, sizeof *s);
     s->fake = with_fake;
     if (count > 8) { errno = EINVAL; die("script"); }
-    memcpy(s->clock.sample, samples, count * sizeof *samples);
+    if (count) memcpy(s->clock.sample, samples, count * sizeof *samples);
     s->clock.count = count;
     if (writ_policy_start(&s->policy, node, bridge, s->fake ? fake : module)) die("policy start");
     writ_supervisor_init(&s->sup, &s->policy, scripted, &s->clock);
@@ -228,11 +350,24 @@ static void begin_with(struct scenario *s, const struct writ_clock_sample *sampl
     s->a = spawn(ch[1]);
     s->b = spawn(ch[1]);
     s->c = spawn(ch[1]);
-    s->w = spawn(-1);
     close(ch[1]);
+    s->w = (struct child){ -1, -1, 1 };
     if (writ_roles_add(&s->roles, 1, s->a.pidfd) || writ_roles_add(&s->roles, 2, s->b.pidfd))
         die("roles");
-    if (writ_supervisor_add_worker(&s->sup, 1, s->w.pidfd)) die("worker");
+    if (provision) {
+        struct writ_owner_reply r;
+        s->provisioned = writ_supervisor_provision(&s->sup, records, provision, &r) == 0 &&
+                         r.outcome == WRIT_OWNER_PROVISIONED && !r.contain && !r.stops;
+        if (!s->provisioned) { errno = EPROTO; die("provision canary"); }
+        /* Workers can be launched only once provisioned. */
+        s->w = launch(&s->sup, 1, &s->worker_clean);
+    }
+}
+
+static void begin_with(struct scenario *s, const struct writ_clock_sample *samples, size_t count,
+                       int with_fake)
+{
+    begin_raw(s, samples, count, with_fake, "canary");
 }
 
 static void begin(struct scenario *s, const struct writ_clock_sample *samples, size_t count)
@@ -243,6 +378,7 @@ static void begin(struct scenario *s, const struct writ_clock_sample *samples, s
 static void end(struct scenario *s)
 {
     retire(&s->a); retire(&s->b); retire(&s->c); retire(&s->w);
+    writ_supervisor_release(&s->sup);
     close(s->channel);
     writ_policy_stop(&s->policy);
 }
@@ -266,6 +402,10 @@ static void ordered_revocation(void)
     struct scenario s;
     begin(&s, samples, 4);
     struct writ_owner_reply r;
+
+    check(s.provisioned && s.sup.sequence == 1 && !s.sup.contained,
+          "protected_record_provisioned", "0600 canary record: PROVISIONED, sequence 1, no containment");
+    check(s.worker_clean, "launched_worker_clean", "launched worker 1: parent-death SIGKILL, only descriptors 0-2 (an inheritable one is closed), default SIGPIPE, empty mask");
 
     command(&s.b, 'r', "B revoke");
     check(serve(&s, &r) == 0 && is(&r, WRIT_OWNER_REVOKE_REFUSED, 0, 0) && alive(&s.w) && !s.sup.contained,
@@ -294,7 +434,7 @@ static void ordered_revocation(void)
 
     errno = 0;
     check(writ_supervisor_serve_one(&s.sup, s.channel, &s.roles, &r) == -1 && errno == EAGAIN &&
-          s.sup.sequence == 6 && s.clock.next == 4 && !s.sup.failed,
+          s.sup.sequence == 7 && s.clock.next == 4 && !s.sup.failed,
           "idle_channel_not_forwarded", "nothing queued: EAGAIN, no frame sent, no sample taken");
     end(&s);
 }
@@ -341,7 +481,7 @@ static void unregistered_worker(void)
     const struct writ_clock_sample samples[] = { at(111) };
     struct scenario s;
     begin(&s, samples, 1);
-    s.sup.workers = 0; /* worker 1's pidfd is not registered with the driver */
+    s.sup.worker[0].worker = 9; /* the driver knows this pidfd only as worker 9 */
     struct writ_owner_reply r;
     command(&s.a, 'r', "A revoke");
     int applied = serve(&s, &r) == 0 && is(&r, WRIT_OWNER_REVOKE_APPLIED, 1, 0);
@@ -360,8 +500,14 @@ static void interpreter_loss(void)
     command(&s.a, 'r', "A revoke");
     int lost = serve(&s, &r) == -1 && s.sup.failed && s.sup.contained;
     uint32_t sequence = s.sup.sequence;
-    check(lost && writ_supervisor_drain(&s.sup, &r) == -1 && s.sup.sequence == sequence && alive(&s.w),
-          "interpreter_loss_fail_stop", "killed interpreter: fail-stop, later DRAIN not sent, no replay");
+    char *argv[] = { "supervisor-owner-worker", "--worker", NULL };
+    char *envp[] = { NULL };
+    pid_t pid;
+    errno = 0;
+    int no_launch = writ_supervisor_launch_worker(&s.sup, 2, "/proc/self/exe", argv, envp, &pid) == -1 &&
+                    errno == EPERM && s.sup.workers == 1;
+    check(lost && writ_supervisor_drain(&s.sup, &r) == -1 && s.sup.sequence == sequence && alive(&s.w) && no_launch,
+          "interpreter_loss_fail_stop", "killed interpreter: fail-stop, later DRAIN not sent, no replay, no further launch (EPERM)");
     end(&s);
 }
 
@@ -405,6 +551,155 @@ static void frame_formatting(void)
           "frame_bounds", "verdict 9 and 4097 bytes refused; 4096 bytes framed");
 }
 
+/* Whether this scenario's interpreter was killed (bounded wait). */
+static int interpreter_killed(struct scenario *s)
+{
+    int dead = 0;
+    int pidfd = (int)syscall(SYS_pidfd_open, s->policy.pid, 0);
+    if (pidfd < 0) die("pidfd_open interpreter");
+    struct pollfd p = { .fd = pidfd, .events = POLLIN };
+    if (poll(&p, 1, 5000) == 1) {
+        siginfo_t info;
+        memset(&info, 0, sizeof info);
+        dead = waitid(P_PIDFD, (id_t)pidfd, &info, WEXITED | WNOWAIT) == 0 && info.si_code == CLD_KILLED;
+    }
+    close(pidfd);
+    return dead;
+}
+
+/* Whether launching a worker is refused with EPERM (and nothing started). */
+static int unlaunchable(struct scenario *s)
+{
+    char *argv[] = { "supervisor-owner-worker", "--worker", NULL };
+    char *envp[] = { NULL };
+    pid_t pid;
+    errno = 0;
+    return writ_supervisor_launch_worker(&s->sup, 1, "/proc/self/exe", argv, envp, &pid) == -1 &&
+           errno == EPERM && s->sup.workers == 0;
+}
+
+/* One refused or failed provisioning: fail-stop, `sent` replies received,
+   the interpreter killed, and no worker can be launched afterwards. */
+static void provision_fails(const char *file, int sent, enum writ_owner_outcome outcome, int want_errno,
+                            const char *name, const char *detail)
+{
+    struct scenario s;
+    begin_raw(&s, NULL, 0, 0, NULL);
+    struct writ_owner_reply r;
+    memset(&r, 0, sizeof r);
+    r.outcome = WRIT_OWNER_ERROR;
+    /* Holding the FIFO's write side open means a read would fail with EAGAIN
+       rather than see end of file, so reading it would be observable. */
+    int writer = -1;
+    if (!strcmp(file, "fifo") && (writer = openat(records, file, O_RDWR | O_NONBLOCK | O_CLOEXEC)) < 0)
+        die("open fifo writer");
+    errno = 0;
+    int failed = writ_supervisor_provision(&s.sup, records, file, &r) == -1;
+    int saved = errno;
+    if (writer >= 0) close(writer);
+    int replied = sent ? (int)s.sup.sequence == sent && r.outcome == outcome && r.contain
+                       : s.sup.sequence == 0 && (!want_errno || saved == want_errno);
+    check(failed && replied && s.sup.failed && s.sup.contained && interpreter_killed(&s) && unlaunchable(&s),
+          name, detail);
+    end(&s);
+}
+
+static void provisioning(void)
+{
+    provision_fails("writable", 1, WRIT_OWNER_PROVISION_REFUSED, 0, "group_writable_record_refused",
+                    "0620 record: PROVISION_REFUSED, fail-stop, interpreter killed, no worker launchable");
+    provision_fails("linked", 1, WRIT_OWNER_PROVISION_REFUSED, 0, "linked_record_refused",
+                    "record with two links: PROVISION_REFUSED, fail-stop");
+    provision_fails("fifo", 1, WRIT_OWNER_PROVISION_REFUSED, 0, "fifo_record_refused",
+                    "FIFO with a writer: not read, facts forwarded, PROVISION_REFUSED, fail-stop");
+    provision_fails("mismatch", 1, WRIT_OWNER_PROVISION_REFUSED, 0, "foreign_root_record_refused",
+                    "record whose issuer root differs: PROVISION_REFUSED, fail-stop");
+    provision_fails("symlink", 0, WRIT_OWNER_ERROR, ELOOP, "symlink_record_not_followed",
+                    "symlink to the canary record: not opened (ELOOP), nothing sent, fail-stop");
+    provision_fails("oversized", 0, WRIT_OWNER_ERROR, EFBIG, "oversized_record_not_sent",
+                    "4097-byte file: EFBIG, nothing sent, fail-stop");
+    provision_fails("via/canary", 0, WRIT_OWNER_ERROR, ELOOP, "intermediate_symlink_not_followed",
+                    "canary record through a symlinked directory: ELOOP, nothing sent, fail-stop");
+    char escape[300];
+    const char *base = strrchr(records_path, '/');
+    snprintf(escape, sizeof escape, "..%s/canary", base);
+    provision_fails(escape, 0, WRIT_OWNER_ERROR, EXDEV, "record_outside_directory_refused",
+                    "canary record named through ..: EXDEV, nothing sent, fail-stop");
+
+    const struct writ_clock_sample samples[] = { at(111) };
+    struct scenario s;
+    begin_raw(&s, samples, 1, 0, NULL);
+    struct writ_owner_reply r;
+    int early = unlaunchable(&s);
+    command(&s.a, 'r', "A revoke unprovisioned");
+    int failed = serve(&s, &r) == -1 && r.outcome == WRIT_OWNER_ERROR && s.sup.sequence == 1;
+    check(early && failed && s.sup.failed && interpreter_killed(&s) && unlaunchable(&s),
+          "control_before_provision_fail_stop",
+          "unprovisioned: launch refused (EPERM); revoke before PROVISION: interpreter ERROR, fail-stop");
+    end(&s);
+
+    begin(&s, NULL, 0);
+    failed = writ_supervisor_provision(&s.sup, records, "canary", &r) == -1 && r.outcome == WRIT_OWNER_ERROR &&
+             s.sup.sequence == 2;
+    check(failed && s.sup.failed && interpreter_killed(&s), "second_provision_fail_stop",
+          "a second PROVISION: interpreter ERROR, fail-stop");
+    end(&s);
+}
+
+static void launching(void)
+{
+    struct scenario s;
+    begin(&s, NULL, 0);
+    int clean = 0;
+    struct child w = launch(&s.sup, 4, &clean);
+    char *argv[] = { "absent", NULL };
+    char *envp[] = { NULL };
+    pid_t pid;
+    errno = 0;
+    int zero = writ_supervisor_launch_worker(&s.sup, 0, "/proc/self/exe", argv, envp, &pid) == -1 && errno == EINVAL;
+    errno = 0;
+    int again = writ_supervisor_launch_worker(&s.sup, 4, "/proc/self/exe", argv, envp, &pid) == -1 && errno == EINVAL;
+    check(clean && zero && again && s.sup.workers == 2 && s.sup.worker[1].worker == 4 &&
+          s.sup.worker[1].pidfd == w.pidfd && s.sup.worker[1].owned,
+          "launch_registers_worker", "after PROVISIONED, launch registers worker 4's pidfd, owned by the driver; worker 0 and a duplicate refused (EINVAL), registry unchanged");
+    retire(&w);
+
+    char missing[300];
+    snprintf(missing, sizeof missing, "%s/absent-program", records_path);
+    int pidfd = writ_supervisor_launch_worker(&s.sup, 5, missing, argv, envp, &pid);
+    if (pidfd < 0) die("launch missing program");
+    siginfo_t info;
+    memset(&info, 0, sizeof info);
+    if (waitid(P_PIDFD, (id_t)pidfd, &info, WEXITED)) die("waitid missing program");
+    check(info.si_code == CLD_EXITED && info.si_status == 127, "launch_exec_failure_visible",
+          "execve of a missing program: the child exits 127");
+    end(&s);
+}
+
+/* Exact PROVISION frames: facts by number, the link count saturated. */
+static void provision_formatting(void)
+{
+    static char frame[WRIT_OWNER_FRAME_CAP];
+    static unsigned char big[WRIT_CHANNEL_PAYLOAD_MAX + 1];
+    struct stat st;
+    memset(&st, 0, sizeof st);
+    st.st_mode = S_IFREG | 0600;
+    st.st_nlink = 1;
+    st.st_uid = 1000;
+    const unsigned char bytes[2] = { 0xab, 0x01 };
+    const char *want = "LINUXSUP1\tPROVISION\t33152\t1\t1000\t1001\tab01\n";
+    size_t n = writ_owner_format_provision(&st, 1001, bytes, 2, frame);
+    int exact = n == strlen(want) && !memcmp(frame, want, n);
+    st.st_mode = S_IFIFO | 0600;
+    st.st_nlink = (nlink_t)UINT32_MAX + 5;
+    want = "LINUXSUP1\tPROVISION\t4480\t4294967295\t1000\t1000\t\n";
+    n = writ_owner_format_provision(&st, 1000, bytes, 0, frame);
+    int saturated = sizeof(nlink_t) <= 4 || (n == strlen(want) && !memcmp(frame, want, n));
+    check(exact && saturated && !writ_owner_format_provision(&st, 1000, big, sizeof big, frame) &&
+          writ_owner_format_provision(&st, 1000, big, WRIT_CHANNEL_PAYLOAD_MAX, frame),
+          "frame_provision_exact", "mode, links, owner and euid by number; links saturate; 4097 bytes refused");
+}
+
 /* Against the malformed peer: each reply the owner never sends is fail-stop,
    kills the interpreter and signals no worker. */
 static int peer_fails_stop(char sender, uint32_t role_seen, int drain, const char *name, const char *detail)
@@ -422,16 +717,7 @@ static int peer_fails_stop(char sender, uint32_t role_seen, int drain, const cha
         command(from, 'r', "peer send");
         failed = serve(&s, &r) == -1;
     }
-    int dead = 0;
-    int pidfd = (int)syscall(SYS_pidfd_open, s.policy.pid, 0);
-    if (pidfd < 0) die("pidfd_open interpreter");
-    struct pollfd p = { .fd = pidfd, .events = POLLIN };
-    if (poll(&p, 1, 5000) == 1) {
-        siginfo_t info;
-        memset(&info, 0, sizeof info);
-        dead = waitid(P_PIDFD, (id_t)pidfd, &info, WEXITED | WNOWAIT) == 0 && info.si_code == CLD_KILLED;
-    }
-    close(pidfd);
+    int dead = interpreter_killed(&s);
     int ok = failed && s.sup.failed && s.sup.contained && dead && alive(&s.w);
     check(ok, name, detail);
     end(&s);
@@ -478,6 +764,7 @@ static void boottime(void)
 
 int main(int argc, char **argv)
 {
+    if (argc == 2 && !strcmp(argv[1], "--worker")) worker_main();
     setvbuf(stdout, NULL, _IOLBF, 0);
     alarm(TIMEOUT_SECONDS);
     if (argc != 5 || argv[1][0] != '/' || argv[2][0] != '/' || argv[3][0] != '/' || argv[4][0] != '/') {
@@ -487,14 +774,26 @@ int main(int argc, char **argv)
     node = argv[1]; bridge = argv[2]; module = argv[3]; fake = argv[4];
     /* A dead interpreter must surface as a failed write, not kill the driver. */
     if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) die("ignore SIGPIPE");
+    /* A blocked signal the launched worker must not inherit. */
+    sigset_t blocked;
+    sigemptyset(&blocked);
+    sigaddset(&blocked, SIGUSR2);
+    if (sigprocmask(SIG_BLOCK, &blocked, NULL)) die("block SIGUSR2");
     printf("INFO supervisor-owner-test: owned processes only, timeout %us\n", TIMEOUT_SECONDS);
     int profile = writ_channel_profile_check();
     if (profile == ENOTSUP) { errno = ENOTSUP; unsupported("pidfs, SO_PASSPIDFD or SO_PASSRIGHTS"); }
     if (profile) { errno = profile; die("profile check"); }
+    make_records();
+    /* Launched workers must not inherit this (see worker_main). */
+    inheritable = dup(records);
+    if (inheritable < 0) die("dup");
     int baseline = count_own_fds();
 
     reply_decoding();
     frame_formatting();
+    provision_formatting();
+    launching();
+    provisioning();
     boottime();
     ordered_revocation();
     regressing_clock();
@@ -504,6 +803,8 @@ int main(int argc, char **argv)
     malformed_peer();
 
     check(count_own_fds() == baseline, "descriptor_cleanup", "descriptor count unchanged");
+    close(inheritable);
+    remove_records();
     printf("RESULT %s (%d failures)\n", failures ? "FAIL" : "PASS", failures);
     return failures ? 1 : 0;
 }

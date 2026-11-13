@@ -1,0 +1,9 @@
+INFO supervisor-owner-test: owned processes only, timeout 120s
+PASS decode_stop_list: S1,S7 decoded in order
+PASS decode_stop_bound: eight stops decoded, a ninth rejected
+PASS decode_rejects: non-stop effect, wrong sequence, trailing comma, leading zero, unknown outcome, bad flag
+PASS frame_verdicts_exact: verdicts 0-8 framed by number; role and payload only where defined
+PASS frame_clock_kinds_exact: unavailable, ambiguous and overflow framed by kind with now 0
+PASS frame_bounds: verdict 9 and 4097 bytes refused; 4096 bytes framed
+FAIL frame_provision_exact: mode, links, owner and euid by number; links saturate; 4097 bytes refused
+ERROR provision canary: Protocol error

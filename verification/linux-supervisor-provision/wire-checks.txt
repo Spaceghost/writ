@@ -1,0 +1,9 @@
+PASS: SupervisorWire refused, applied and drained revoke replies in sequence
+PASS: SupervisorWire unattributed senders and malformed payloads deny without containment
+PASS: SupervisorWire faulted, expired and regressing samples contain
+PASS: SupervisorWire malformed frames reply ERROR and stop the interpreter
+PASS: SupervisorWire bounds frame payloads at 4096 bytes
+PASS: SupervisorWire monitor frames and control messages share one owner and watermark
+PASS: SupervisorWire exhausted and stopped interpreters require containment
+PASS: SupervisorWire renders effects in order
+SupervisorWire: 8 checks passed

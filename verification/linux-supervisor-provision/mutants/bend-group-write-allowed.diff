@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -107,7 +107,7 @@
+ 
+ # Group- or other-write permission (0o022).
+ def shared_write_bits() -> U32:
+-  18
++  2
+ 
+ def first_fault(fault: Bool, reason: ProvisionError, later: Maybe<&2, ProvisionError>) -> Maybe<&2, ProvisionError>:
+   match fault:

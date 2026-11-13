@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -295,7 +295,7 @@
+ def record_fault(record: Record) -> Maybe<&2, ProvisionError>:
+   match record:
+     case Record{_, +roles, +directory, +placements}:
+-      first_fault(Bool.not(C.valid_roles(roles)), RolesInvalid{},
++      first_fault(False{}, RolesInvalid{},
+         first_fault(roles_empty(roles), RolesEmpty{},
+           first_fault(Bool.not(roles_backed(roles, directory)), RoleWithoutAuthority{},
+             first_fault(Bool.not(Iss.placements_valid(placements)), PlacementsInvalid{}, None{}))))

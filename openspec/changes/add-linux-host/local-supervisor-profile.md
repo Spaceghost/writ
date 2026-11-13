@@ -247,8 +247,18 @@ samples the clock first, attributes a channel datagram to its sender role's
 principal, and passes a decoded revoke to the same joint revoke, which stays
 available, with the drain, after containment. A native
 driver (`supervisor_owner.c`) now runs it in a private interpreter over the
-receiver, but only against synthetic test provisioning with scripted clock
-samples; installation and approval submission still use trusted in-process
+receiver. Its role-index-to-principal map is installed from a protected
+configuration record (`SupervisorProvision.bend`): the driver forwards the
+file's `fstat` facts and bytes, and Bend accepts only a regular, singly linked
+file owned by the supervisor's user and writable by no one else, holding a
+consistent record whose issuer root equals the retained issuer's. That root
+match is a consistency check, not authority: the canary root is public, so the
+file facts are the only gate, and they do not authenticate the operator. Through
+the driver's API, workers are registered only as it launches them, after
+provisioning. Which process holds which role index is still registered by the
+caller, so binding each worker lifetime and session to its principal (LH-011)
+remains open. The issuer itself is still the synthetic canary, the clock
+samples are scripted, and approval submission still uses trusted in-process
 construction. A deployment must serialize every relevant
 authority/policy change or treat the owner as incomplete.
 

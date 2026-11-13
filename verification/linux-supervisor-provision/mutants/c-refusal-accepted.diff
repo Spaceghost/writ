@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -214,7 +214,7 @@
+    profile unprovisioned and the interpreter stopped, so it is fail-stop. */
+ static int provision_outcome(enum writ_owner_outcome o)
+ {
+-    return o == WRIT_OWNER_PROVISIONED;
++    return o == WRIT_OWNER_PROVISIONED || o == WRIT_OWNER_PROVISION_REFUSED;
+ }
+ 
+ static int control_outcome(enum writ_owner_outcome o)

@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -257,7 +257,7 @@
+ # A branch keeps generated backends from parsing an oversized record.
+ def record_bounded(within: Bool, +bytes: +List<U32>) -> RecordRead:
+   match within:
+-    case False{}: RecordBad{RecordTooLong{}}
++    case False{}: record_in_range(LH.all_bytes(bytes), bytes)
+     case True{}: record_in_range(LH.all_bytes(bytes), bytes)
+ 
+ # Exported for tests: decode with an explicit byte maximum, so the bound is

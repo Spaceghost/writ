@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Which supervisor gap should come next?</title>
+<meta name="writ-topic" content="linux-authenticated-bridge">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec}
+@media(prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif;max-width:60rem}h1{font-size:1.3rem}h2{font-size:1.05rem;margin-top:1.3rem}p{max-width:72ch}a{color:var(--accent)}code{background:var(--soft);padding:.05em .25em;border-radius:4px}fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:1rem 0}legend{font-weight:600}label{display:block;margin:.8rem 0;cursor:pointer}input{margin-right:.5rem}textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px}button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem}.note{color:var(--muted);font-size:.9rem}
+</style></head><body>
+<h1>Which supervisor gap should come next?</h1>
+<p>Josh, the native supervisor driver landed in <a href="https://github.com/Spaceghost/writ/blob/ddc51b99/verification/linux-supervisor-driver/README.md">ddc51b99</a>. A role 1 process sends "revoke approval 5". The driver receives it with the kernel's per-message sender identity and hands it to the Bend owner, which applies the revoke. The next drain kills the worker through its pidfd. The same message from role 2 or an unregistered process is refused or denied. All 26 native cases pass, and so do the core suite (3250 checks) and the proofs. CI is green apart from Fedora (still waiting for a runner) and Windows mount (your LPAC area).</p>
+<p>It still runs on test scaffolding: the issuer, the role map and the clock samples are all synthetic. Each gap below is a separate piece of work. Which should I take next?</p>
+<form method="post" action="/questions/q25/answer">
+<fieldset><legend>Next piece</legend>
+<label><input type="radio" name="next" value="provisioning" required><strong>Trusted provisioning (my recommendation).</strong> Install the issuer and role map from an authenticated record instead of the synthetic module, and register workers as the supervisor launches them. This is the biggest thing standing between the driver and a real deployment.</label>
+<label><input type="radio" name="next" value="clock"><strong>Clock alignment.</strong> Map <code>CLOCK_BOOTTIME</code> onto the issuer's grant times so the driver uses real samples instead of scripted ones.</label>
+<label><input type="radio" name="next" value="restart"><strong>Restart continuity.</strong> Persist the owner's state and watermark so a supervisor restart neither loses a revoke nor replays one.</label>
+<label><input type="radio" name="next" value="frames-binding"><strong>Monitor frames and role binding.</strong> Have the driver send monitor frames from a broker, and bind each worker's channel role to its session.</label>
+<label><input type="radio" name="next" value="ci"><strong>CI lane for the driver test.</strong> Run the native driver test in CI. It needs Linux 6.16 or newer, which may mean a new runner.</label>
+<label><input type="radio" name="next" value="other"><strong>Something else</strong> (see notes).</label>
+</fieldset>
+<label>Notes<textarea name="text"></textarea></label><button type="submit">Send answer</button>
+</form>
+</body></html>

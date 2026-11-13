@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -312,7 +312,7 @@
+         if (got < 0 && errno == EINTR) continue;
+         if (got < 0) return -1;
+         if (got == 0) return 0;
+-        if (full) { errno = EFBIG; return -1; }
++        if (full) return 0;
+         *length += (size_t)got;
+     }
+ }

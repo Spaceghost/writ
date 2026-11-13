@@ -1,0 +1,24 @@
+export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH" BEND_NO_TELEMETRY=1
+OUT=<absolute directory outside the checkout>
+NODE=<absolute path of the node executable, not a shim script>
+
+# Bend provisioning and wire checks (also part of Tests.bend)
+bend hosts/linux/monitor/SupervisorProvisionTests.bend
+bend hosts/linux/monitor/SupervisorWireTests.bend
+
+# Generated test module and native driver test; records go to a private
+# directory under $TMPDIR, removed at exit
+bend hosts/linux/monitor/SupervisorDriverModule.bend -o "$OUT/supervisor-driver.mjs"
+make -C contrib/native-hosts/linux OUT="$OUT" "$OUT/supervisor-owner-test"
+TMPDIR="$OUT" "$OUT/supervisor-owner-test" "$NODE" "$PWD/contrib/native-hosts/runtime/supervisor-policy.mjs" \
+  "$OUT/supervisor-driver.mjs" "$PWD/contrib/native-hosts/linux/supervisor-owner-fake.mjs"
+
+# Also built with clang and -Werror (the Makefile's CFLAGS)
+make -C contrib/native-hosts/linux OUT="$OUT/clang" CC=clang "$OUT/clang/supervisor-owner-test"
+
+# Full suite, native CPU suite, proofs
+bend Tests.bend > bend.log; python3 utils/verification/check_core.py bend.log
+bend Tests.bend -o core-tests.c; clang -std=c11 -O0 -w core-tests.c -o core-tests -lpthread -lm
+./core-tests +RTS --threads 4 --gpu off > native.log; cmp bend.log native.log
+bend PROOF.bend
+BENDTT=<Lean-built bendtt> LEAN_STACK_SIZE_KB=4194304 bend PROOF.bend --verdict

@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -377,7 +377,7 @@
+ def adopt_issuer(issuer: Maybe<&2, Iss.State>, +roles: C.RoleMap, +root: Iss.State, +state: LH.State) -> Adoption:
+   match issuer:
+     case None{}: NotAdopted{NoIssuer{}}
+-    case Some{+held}: adopt_matched(same_root(root, held), roles, state)
++    case Some{+held}: adopt_matched(True{}, roles, state)
+ 
+ # Public entry point: the owner the supervisor runs, when `installed` was
+ # accepted and its root is the root of the issuer `state` retains. The state

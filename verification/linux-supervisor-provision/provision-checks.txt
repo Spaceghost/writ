@@ -1,0 +1,9 @@
+PASS: SupervisorProvision canary record installs its role map over the canary issuer root
+PASS: SupervisorProvision refuses unprotected configuration facts before decoding
+PASS: SupervisorProvision refuses oversized, out-of-range, misaligned and short records
+PASS: SupervisorProvision refuses unknown kinds, zero principals and short sections
+PASS: SupervisorProvision refuses invalid, empty or unbacked role maps and ambiguous placements
+PASS: SupervisorProvision adopts only a record whose root is the retained issuer's root
+PASS: SupervisorWire provisions first, then attributes revokes through the installed map
+PASS: SupervisorWire refuses unprovisioned frames, refused records and reprovisioning
+SupervisorProvision: 8 checks passed

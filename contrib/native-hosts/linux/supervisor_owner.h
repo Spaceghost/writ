@@ -16,9 +16,18 @@
    also fail-stop. The caller
    ignores SIGPIPE so a dead interpreter is a failed write.
 
-   Not established here: provisioning (the interpreter's initial owner comes
-   from a provisioning module; the only one is a synthetic test module),
-   alignment of the host clock with the issuer's time base, restart
+   Provisioning: the interpreter starts with no role map. The first call must
+   be writ_supervisor_provision, which forwards one protected configuration
+   file's fstat facts and bytes; Bend decides whether the file is protected
+   and the record acceptable. Through this API workers are registered only
+   by writ_supervisor_launch_worker, as the supervisor starts them, and only
+   after PROVISIONED; the struct's fields are not an enforcement boundary.
+   Which process holds which channel role index (writ_roles_add) is still
+   the caller's registration.
+   Not established here: an authenticated operator (file ownership and mode
+   are local facts), an installed issuer (the issuer the interpreter retains
+   comes from its provisioning module; the only one is a synthetic test
+   module), alignment of the host clock with the issuer's time base, restart
    continuity, monitor frames from a broker (LINUXSUP1 FRAME is not sent by
    this driver), and host qualification. */
 #ifndef WRIT_SUPERVISOR_OWNER_H
@@ -26,6 +35,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/types.h>
 
 #include "policy_pipe.h"
 #include "supervisor_channel.h"
@@ -68,7 +78,9 @@ enum writ_owner_outcome {
     WRIT_OWNER_DRAIN_INCOMPLETE,
     WRIT_OWNER_ERROR,
     WRIT_OWNER_STOPPED,
-    WRIT_OWNER_EXHAUSTED
+    WRIT_OWNER_EXHAUSTED,
+    WRIT_OWNER_PROVISIONED,
+    WRIT_OWNER_PROVISION_REFUSED
 };
 
 struct writ_owner_reply {
@@ -84,7 +96,8 @@ struct writ_supervisor {
     writ_clock_source clock;
     void *clock_context;
     size_t workers;
-    struct { uint32_t worker; int pidfd; } worker[WRIT_OWNER_WORKERS];
+    struct { uint32_t worker; int pidfd; int owned; } worker[WRIT_OWNER_WORKERS];
+    int provisioned;                   /* PROVISIONED was received */
     int contained;                     /* sticky: some reply required containment */
     int failed;                        /* sticky: fail-stop, nothing more is sent */
 };
@@ -93,11 +106,39 @@ struct writ_supervisor {
 int writ_supervisor_init(struct writ_supervisor *s, struct writ_policy *policy,
                          writ_clock_source clock, void *clock_context);
 
-/* Registers the pidfd the supervisor holds for worker `worker` (the Bend
-   worker number). The caller keeps the pidfd open. 0, or -1 with EINVAL
-   (worker 0, duplicate, negative pidfd) or ENOSPC. Not an authority fact:
-   Bend decides whether a worker stops; this only says which process that is. */
-int writ_supervisor_add_worker(struct writ_supervisor *s, uint32_t worker, int pidfd);
+/* Resolves `name` beneath `dirfd` with openat2 as an O_PATH descriptor (no
+   symlink in any component, no magic link, no escape from `dirfd`), takes
+   fstat from that descriptor, and only for a regular file reopens it through
+   /proc/self/fd to read its bytes, so a FIFO or device is never opened for
+   I/O. It then sends one PROVISION frame: st_mode,
+   st_nlink (saturated), st_uid, the effective user ID and the bytes. Bend
+   decides. 0 when the reply was PROVISIONED; -1 on fail-stop, which includes
+   PROVISION_REFUSED (then `reply` holds it), an open or read failure, and a
+   file of more than WRIT_CHANNEL_PAYLOAD_MAX bytes (errno EFBIG); in those
+   last cases nothing is sent. Bend refuses anything but the first frame, so
+   this must be the first call. */
+int writ_supervisor_provision(struct writ_supervisor *s, int dirfd, const char *name,
+                              struct writ_owner_reply *reply);
+
+/* Starts `path` with `argv` and `envp` as a child of this process (clone3
+   with CLONE_PIDFD, then execve) and registers its pidfd as worker `worker`
+   (the Bend worker number). Every signal is blocked in the caller across
+   clone3, so no handler of the caller runs in the child; the child then gets
+   default dispositions, PR_SET_PDEATHSIG SIGKILL (it dies with this thread),
+   an empty signal mask and only descriptors 0 to 2. On success returns the
+   pidfd, which the supervisor owns: the caller may poll and waitid on it but
+   must not close it; writ_supervisor_release closes it. Sets `*pid`; the
+   caller reaps the child. -1 with EPERM (not provisioned, or failed),
+   EINVAL (worker 0 or already registered) or ENOSPC before anything is
+   started, or with the errno of clone3. A failed execve shows as the child
+   exiting with status 127. This says which process a worker number is;
+   Bend decides whether it stops. */
+int writ_supervisor_launch_worker(struct writ_supervisor *s, uint32_t worker, const char *path,
+                                  char *const argv[], char *const envp[], pid_t *pid);
+
+/* Closes every pidfd the supervisor owns (launched workers). Kills and reaps
+   nothing; the registry is emptied. */
+void writ_supervisor_release(struct writ_supervisor *s);
 
 /* Forwards one classified record with a fresh clock sample. 0 when a
    well-formed reply was received (whatever its outcome), -1 on fail-stop.
@@ -121,6 +162,15 @@ int writ_supervisor_serve_one(struct writ_supervisor *s, int fd, const struct wr
 int writ_supervisor_drain(struct writ_supervisor *s, struct writ_owner_reply *reply);
 
 #ifdef WRIT_OWNER_TESTING
+#include <sys/stat.h>
+/* Test seam: registers an existing pidfd, which the caller keeps owning, as
+   worker `worker` without launching it. 0, or -1
+   with EINVAL (worker 0, duplicate, negative pidfd) or ENOSPC. */
+int writ_supervisor_add_worker(struct writ_supervisor *s, uint32_t worker, int pidfd);
+/* Test seam: the PROVISION frame (with LF) for the facts and bytes; returns
+   its length, or 0 when it cannot be formed. */
+size_t writ_owner_format_provision(const struct stat *st, uint32_t euid, const unsigned char *bytes,
+                                   size_t length, char frame[WRIT_OWNER_FRAME_CAP]);
 /* Test seam: decode one reply line (LF removed) expecting `sequence`. */
 int writ_owner_decode(char *line, uint32_t sequence, struct writ_owner_reply *reply);
 /* Test seam: the CONTROL frame (with LF) for one record and sample; returns

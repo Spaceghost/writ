@@ -1,0 +1,10 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -61,7 +61,6 @@
+ /* 0 when `worker` can be registered: nonzero, not yet registered, room left. */
+ static int worker_room(const struct writ_supervisor *s, uint32_t worker)
+ {
+-    if (!worker) { errno = EINVAL; return -1; }
+     for (size_t i = 0; i < s->workers; ++i)
+         if (s->worker[i].worker == worker) { errno = EINVAL; return -1; }
+     if (s->workers == WRIT_OWNER_WORKERS) { errno = ENOSPC; return -1; }

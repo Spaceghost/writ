@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -331,7 +331,7 @@
+     /* No O_NOFOLLOW: with O_PATH it would return the trailing symlink
+        itself; RESOLVE_NO_SYMLINKS instead refuses any symlink with ELOOP. */
+     how.flags = O_PATH | O_CLOEXEC;
+-    how.resolve = RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS | RESOLVE_BENEATH;
++    how.resolve = RESOLVE_NO_MAGICLINKS | RESOLVE_BENEATH;
+     int path = (int)syscall(SYS_openat2, dirfd, name, &how, sizeof how);
+     if (path < 0) return fail_stop(s);
+     if (fstat(path, &st)) {

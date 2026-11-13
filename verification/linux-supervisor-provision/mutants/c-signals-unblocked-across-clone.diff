@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -123,7 +123,7 @@
+     if (worker_room(s, worker)) return -1;
+     sigset_t all, old;
+     sigfillset(&all);
+-    if (sigprocmask(SIG_SETMASK, &all, &old)) return -1;
++    if (sigprocmask(SIG_SETMASK, NULL, &old)) return -1;
+     pid_t parent = getpid();
+     int pidfd = -1;
+     struct clone_args args;

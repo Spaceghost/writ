@@ -2,11 +2,16 @@
 #include "supervisor_owner.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <inttypes.h>
+#include <linux/openat2.h>
+#include <linux/sched.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdio.h>
+#include <sys/prctl.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 #include <time.h>
 #include <unistd.h>
@@ -28,6 +33,8 @@ static const char *const outcome_names[] = {
     [WRIT_OWNER_ERROR] = "ERROR",
     [WRIT_OWNER_STOPPED] = "STOPPED",
     [WRIT_OWNER_EXHAUSTED] = "EXHAUSTED",
+    [WRIT_OWNER_PROVISIONED] = "PROVISIONED",
+    [WRIT_OWNER_PROVISION_REFUSED] = "PROVISION_REFUSED",
 };
 
 struct writ_clock_sample writ_clock_boottime(void *unused)
@@ -51,16 +58,87 @@ int writ_supervisor_init(struct writ_supervisor *s, struct writ_policy *policy,
     return 0;
 }
 
-int writ_supervisor_add_worker(struct writ_supervisor *s, uint32_t worker, int pidfd)
+/* 0 when `worker` can be registered: nonzero, not yet registered, room left. */
+static int worker_room(const struct writ_supervisor *s, uint32_t worker)
 {
-    if (!worker || pidfd < 0) { errno = EINVAL; return -1; }
+    if (!worker) { errno = EINVAL; return -1; }
     for (size_t i = 0; i < s->workers; ++i)
         if (s->worker[i].worker == worker) { errno = EINVAL; return -1; }
     if (s->workers == WRIT_OWNER_WORKERS) { errno = ENOSPC; return -1; }
+    return 0;
+}
+
+static void register_worker(struct writ_supervisor *s, uint32_t worker, int pidfd, int owned)
+{
     s->worker[s->workers].worker = worker;
     s->worker[s->workers].pidfd = pidfd;
+    s->worker[s->workers].owned = owned;
     ++s->workers;
+}
+
+void writ_supervisor_release(struct writ_supervisor *s)
+{
+    for (size_t i = 0; i < s->workers; ++i)
+        if (s->worker[i].owned) close(s->worker[i].pidfd);
+    s->workers = 0;
+}
+
+#ifdef WRIT_OWNER_TESTING
+int writ_supervisor_add_worker(struct writ_supervisor *s, uint32_t worker, int pidfd)
+{
+    if (pidfd < 0) { errno = EINVAL; return -1; }
+    if (worker_room(s, worker)) return -1;
+    register_worker(s, worker, pidfd, 0);
     return 0;
+}
+#endif
+
+/* In the child between clone3 and execve: only async-signal-safe calls.
+   Every signal is still blocked (see launch), so no handler inherited from
+   the supervisor runs before the dispositions are reset. */
+static _Noreturn void exec_worker(pid_t parent, const char *path, char *const argv[], char *const envp[])
+{
+    struct sigaction dfl;
+    memset(&dfl, 0, sizeof dfl);
+    dfl.sa_handler = SIG_DFL;
+    for (int sig = 1; sig < NSIG; ++sig) (void)sigaction(sig, &dfl, NULL);
+    /* A worker must not outlive the supervisor thread that launched it. */
+    if (prctl(PR_SET_PDEATHSIG, SIGKILL) || getppid() != parent) _exit(127);
+    sigset_t none;
+    sigemptyset(&none);
+    if (sigprocmask(SIG_SETMASK, &none, NULL)) _exit(127);
+    /* The worker must not inherit the channel, the interpreter's pipes or
+       any other supervisor descriptor. */
+    if (syscall(SYS_close_range, 3u, ~0u, 0u)) _exit(127);
+    execve(path, argv, envp);
+    _exit(127);
+}
+
+int writ_supervisor_launch_worker(struct writ_supervisor *s, uint32_t worker, const char *path,
+                                  char *const argv[], char *const envp[], pid_t *pid)
+{
+    /* Not transport policy: an unprovisioned or failed supervisor has no
+       owner that could ever stop the worker. */
+    if (!s->provisioned || s->failed) { errno = EPERM; return -1; }
+    if (worker_room(s, worker)) return -1;
+    sigset_t all, old;
+    sigfillset(&all);
+    if (sigprocmask(SIG_SETMASK, &all, &old)) return -1;
+    pid_t parent = getpid();
+    int pidfd = -1;
+    struct clone_args args;
+    memset(&args, 0, sizeof args);
+    args.flags = CLONE_PIDFD;
+    args.pidfd = (uint64_t)(uintptr_t)&pidfd;
+    args.exit_signal = SIGCHLD;
+    long child = syscall(SYS_clone3, &args, sizeof args);
+    if (child == 0) exec_worker(parent, path, argv, envp);
+    int saved = errno;
+    (void)sigprocmask(SIG_SETMASK, &old, NULL);
+    if (child < 0) { errno = saved; return -1; }
+    register_worker(s, worker, pidfd, 1);
+    *pid = (pid_t)child;
+    return pidfd;
 }
 
 static int canonical_u32(const char *text, size_t length, uint32_t *result)
@@ -123,13 +201,22 @@ int writ_owner_decode(char *line, uint32_t sequence, struct writ_owner_reply *re
 /* Fail-stop also kills the interpreter: nothing may exchange with it again. */
 static int fail_stop(struct writ_supervisor *s)
 {
+    int saved = errno;
     s->failed = 1;
     s->contained = 1;
     if (s->policy) writ_policy_abandon(s->policy);
+    errno = saved;
     return -1;
 }
 
-/* Replies a control message may receive, and replies a drain may receive. */
+/* Replies a control message may receive, and replies a drain may receive.
+   A provisioning frame may only be PROVISIONED; PROVISION_REFUSED leaves the
+   profile unprovisioned and the interpreter stopped, so it is fail-stop. */
+static int provision_outcome(enum writ_owner_outcome o)
+{
+    return o == WRIT_OWNER_PROVISIONED;
+}
+
 static int control_outcome(enum writ_owner_outcome o)
 {
     return o == WRIT_OWNER_REVOKE_APPLIED || o == WRIT_OWNER_REVOKE_REFUSED ||
@@ -186,6 +273,96 @@ size_t writ_owner_format_control(const struct writ_channel_record *record,
     }
     frame[at++] = '\n';
     return at;
+}
+
+static size_t append_hex(char *frame, size_t at, const unsigned char *bytes, size_t length)
+{
+    static const char hex[] = "0123456789abcdef";
+    for (size_t i = 0; i < length; ++i) {
+        frame[at++] = hex[bytes[i] >> 4];
+        frame[at++] = hex[bytes[i] & 15];
+    }
+    frame[at++] = '\n';
+    return at;
+}
+
+#ifndef WRIT_OWNER_TESTING
+static
+#endif
+size_t writ_owner_format_provision(const struct stat *st, uint32_t euid, const unsigned char *bytes,
+                                   size_t length, char frame[WRIT_OWNER_FRAME_CAP])
+{
+    if (length > WRIT_CHANNEL_PAYLOAD_MAX) return 0;
+    uint32_t links = st->st_nlink > UINT32_MAX ? UINT32_MAX : (uint32_t)st->st_nlink;
+    int used = snprintf(frame, WRIT_OWNER_FRAME_CAP, "LINUXSUP1\tPROVISION\t%" PRIu32 "\t%" PRIu32 "\t%" PRIu32 "\t%" PRIu32 "\t",
+                        (uint32_t)st->st_mode, links, (uint32_t)st->st_uid, euid);
+    if (used <= 0 || (size_t)used + 2 * length + 1 > WRIT_OWNER_FRAME_CAP) return 0;
+    return append_hex(frame, (size_t)used, bytes, length);
+}
+
+/* Reads a regular file to its end; -1 with EFBIG beyond the record maximum. */
+static int read_record(int fd, unsigned char *bytes, size_t *length)
+{
+    unsigned char extra;
+    *length = 0;
+    for (;;) {
+        int full = *length == WRIT_CHANNEL_PAYLOAD_MAX;
+        ssize_t got = full ? read(fd, &extra, 1)
+                           : read(fd, bytes + *length, WRIT_CHANNEL_PAYLOAD_MAX - *length);
+        if (got < 0 && errno == EINTR) continue;
+        if (got < 0) return -1;
+        if (got == 0) return 0;
+        if (full) { errno = EFBIG; return -1; }
+        *length += (size_t)got;
+    }
+}
+
+int writ_supervisor_provision(struct writ_supervisor *s, int dirfd, const char *name,
+                              struct writ_owner_reply *reply)
+{
+    if (s->failed) return fail_stop(s);
+    unsigned char bytes[WRIT_CHANNEL_PAYLOAD_MAX];
+    size_t length = 0;
+    struct stat st;
+    /* An O_PATH resolution opens nothing for I/O: no FIFO, device or
+       terminal open happens, whatever `name` names. */
+    struct open_how how;
+    memset(&how, 0, sizeof how);
+    /* No O_NOFOLLOW: with O_PATH it would return the trailing symlink
+       itself; RESOLVE_NO_SYMLINKS instead refuses any symlink with ELOOP. */
+    how.flags = O_PATH | O_CLOEXEC;
+    how.resolve = RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS | RESOLVE_BENEATH;
+    int path = (int)syscall(SYS_openat2, dirfd, name, &how, sizeof how);
+    if (path < 0) return fail_stop(s);
+    if (fstat(path, &st)) {
+        int saved = errno;
+        close(path);
+        errno = saved;
+        return fail_stop(s);
+    }
+    /* Only a regular file is reopened (the same inode, through its O_PATH
+       descriptor) and read; for anything else Bend sees the facts and
+       refuses. */
+    if (S_ISREG(st.st_mode)) {
+        char self[64];
+        snprintf(self, sizeof self, "/proc/self/fd/%d", path);
+        int fd = open(self, O_RDONLY | O_CLOEXEC | O_NONBLOCK | O_NOCTTY);
+        int bad = fd < 0 || read_record(fd, bytes, &length);
+        int saved = errno;
+        if (fd >= 0) close(fd);
+        if (bad) {
+            close(path);
+            errno = saved;
+            return fail_stop(s);
+        }
+    }
+    close(path);
+    char frame[WRIT_OWNER_FRAME_CAP];
+    size_t used = writ_owner_format_provision(&st, (uint32_t)geteuid(), bytes, length, frame);
+    if (!used) return fail_stop(s);
+    if (call(s, frame, used, reply, provision_outcome)) return -1;
+    s->provisioned = 1;
+    return 0;
 }
 
 int writ_supervisor_control(struct writ_supervisor *s, const struct writ_channel_record *record,
