@@ -14,7 +14,9 @@ or for the unmapped index 3, gets `ROLE_REFUSED` and starts nothing.
 
 Current gap: the supervisor now starts every role process and binds its exact
 lifetime to the index, but **which program** it starts is still the caller's
-argument (`path`, `argv`, `envp`), not part of the protected record. The role
+argument (`path`, `argv`, `envp`), not part of the protected record. (The
+[role program record](../linux-supervisor-role-programs/README.md) later pins
+each role's program by digest in the record.) The role
 map itself comes from file facts, which do not authenticate the operator.
 LH-011's trusted-program binding and an authenticated administrator are
 therefore still open. An admitted index stays bound for the interpreter's

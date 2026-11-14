@@ -25,6 +25,7 @@
    system call failed; 77 a required kernel feature is missing. */
 #define _GNU_SOURCE
 #include "supervisor_owner.h"
+#include "sha256.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -97,13 +98,23 @@ static const uint32_t write_words[APPROVAL_WORDS] = {
 };
 static unsigned char submit_source[4 * APPROVAL_WORDS], submit_write[4 * APPROVAL_WORDS];
 
-/* SupervisorProvisionTests.canary(): live 1/2/3, roles 1 -> 101 and 2 -> 102,
-   the canary directory (five authorities) and placements (four). */
-static const uint32_t canary_words[42] = {
-    1, 1, 2, 3, 2, 1, 101, 2, 102,
+/* SupervisorProvisionTests.canary(): version 2, live 1/2/3, roles 1 -> 101
+   and 2 -> 102, the canary directory (five authorities), placements (four)
+   and the program pins: role 1 SHA-256("abc"), role 2 SHA-256(""). The test
+   writes this record with both pins replaced by the digest of its own role
+   program (see make_records); the constant pins are checked against the
+   native SHA-256 instead. */
+#define CANARY_WORDS 61
+#define PIN_ROLE1 44
+#define PIN_ROLE2 53
+static const uint32_t canary_words[CANARY_WORDS] = {
+    2, 1, 2, 3, 2, 1, 101, 2, 102,
     5, 1, 101, 5, 2, 102, 6, 1, 103, 9, 1, 104, 7, 2, 105, 5,
-    4, 1, 10, 4, 5, 1, 11, 4, 7, 2, 20, 8, 6, 2, 20, 9, 6
+    4, 1, 10, 4, 5, 1, 11, 4, 7, 2, 20, 8, 6, 2, 20, 9, 6,
+    2, 1, 3128432319u, 2399260650u, 1094795486u, 1571693091u, 2953011619u, 2518121116u, 3021012833u, 4060091821u,
+    2, 3820012610u, 2566659092u, 2600203464u, 2574235940u, 665731556u, 1687917388u, 2761267483u, 2018687061u
 };
+static unsigned char program_digest[32];  /* of the role program copy */
 
 static int records = -1;          /* the private record directory */
 static int inheritable = -1;      /* a descriptor without close-on-exec */
@@ -123,8 +134,37 @@ static void write_record(const char *name, const unsigned char *bytes, size_t le
 }
 
 static const char *const record_names[] = {
-    "canary", "writable", "linked", "linked-too", "fifo", "mismatch", "symlink", "oversized", "via"
+    "canary", "writable", "linked", "linked-too", "fifo", "mismatch", "symlink", "oversized", "via",
+    "role-program", "shared-program", "linked-program", "linked-program-too", "notelf", "program-symlink"
 };
+
+static void digest_words(const unsigned char digest[32], uint32_t *words)
+{
+    for (unsigned int i = 0; i < 8; ++i)
+        words[i] = (uint32_t)digest[4 * i] << 24 | (uint32_t)digest[4 * i + 1] << 16 |
+                   (uint32_t)digest[4 * i + 2] << 8 | (uint32_t)digest[4 * i + 3];
+}
+
+/* Copies this test's own binary to `name` beneath the record directory with
+   `mode`, returning the SHA-256 of what it wrote. */
+static void copy_self(const char *name, mode_t mode, unsigned char digest[32])
+{
+    int in = open("/proc/self/exe", O_RDONLY | O_CLOEXEC);
+    int out = openat(records, name, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW, 0600);
+    if (in < 0 || out < 0) die(name);
+    struct writ_sha256 h;
+    writ_sha256_init(&h);
+    static unsigned char buffer[65536];
+    for (;;) {
+        ssize_t got = read(in, buffer, sizeof buffer);
+        if (got < 0) die(name);
+        if (got == 0) break;
+        writ_sha256_update(&h, buffer, (size_t)got);
+        if (write(out, buffer, (size_t)got) != got) die(name);
+    }
+    writ_sha256_final(&h, digest);
+    if (fchmod(out, mode) || close(out) || close(in)) die(name);
+}
 
 /* At exit after a failure: remove what is left, ignoring errors. */
 static void discard_records(void)
@@ -147,17 +187,29 @@ static void make_records(void)
     records = open(records_path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
     if (records < 0) { (void)rmdir(records_path); die("open record directory"); }
     if (atexit(discard_records)) die("atexit");
+    /* The role program: a private copy of this binary, so the pins name a
+       file the test created. */
+    copy_self("role-program", 0700, program_digest);
+    unsigned char unused[32];
+    copy_self("shared-program", 0770, unused);
+    copy_self("linked-program", 0700, unused);
+    if (linkat(records, "linked-program", records, "linked-program-too", 0)) die("linkat program");
+    static const unsigned char text[] = "not a program\n";
+    write_record("notelf", text, sizeof text - 1, 0700);
+    if (symlinkat("role-program", records, "program-symlink")) die("symlinkat program");
+    uint32_t words[CANARY_WORDS];
+    memcpy(words, canary_words, sizeof words);
+    digest_words(program_digest, words + PIN_ROLE1);
+    digest_words(program_digest, words + PIN_ROLE2);
     unsigned char bytes[sizeof canary_words];
-    record_bytes(canary_words, 42, bytes);
+    record_bytes(words, CANARY_WORDS, bytes);
     write_record("canary", bytes, sizeof bytes, 0600);
     write_record("writable", bytes, sizeof bytes, 0620);
     write_record("linked", bytes, sizeof bytes, 0600);
     if (linkat(records, "linked", records, "linked-too", 0)) die("linkat");
     if (mkfifoat(records, "fifo", 0600)) die("mkfifoat");
-    uint32_t other[42];
-    memcpy(other, canary_words, sizeof other);
-    other[3] = 4; /* live stamp authority 4: not the canary issuer's root */
-    record_bytes(other, 42, bytes);
+    words[3] = 4; /* live stamp authority 4: not the canary issuer's root */
+    record_bytes(words, CANARY_WORDS, bytes);
     write_record("mismatch", bytes, sizeof bytes, 0600);
     if (symlinkat("canary", records, "symlink")) die("symlinkat");
     if (symlinkat(".", records, "via")) die("symlinkat via");
@@ -227,16 +279,33 @@ static int is_socket(int fd)
     return !fstat(fd, &st) && S_ISSOCK(st.st_mode);
 }
 
+/* Whether this process image is the driver's memory file rather than a path
+   on disk, sealed against writes, shrinking, growth and further seals. */
+static int runs_sealed_copy(void)
+{
+    char target[128];
+    ssize_t n = readlink("/proc/self/exe", target, sizeof target - 1);
+    if (n < 0) return 0;
+    target[n] = 0;
+    int image = open("/proc/self/exe", O_RDONLY | O_CLOEXEC);
+    if (image < 0) return 0;
+    int seals = fcntl(image, F_GET_SEALS);
+    close(image);
+    int all = F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE | F_SEAL_SEAL;
+    return !strncmp(target, "/memfd:writ-role", 16) && seals >= 0 && (seals & all) == all;
+}
+
 /* Re-executed role process (writ_supervisor_launch_role): its command socket
    is descriptor 0 and its channel end descriptor 3. It records whether the
-   driver set parent-death SIGKILL and left exactly descriptors 0 to 3 with
-   sockets at 0 and 3, then serves commands; 'q' reports the result. */
+   driver set parent-death SIGKILL, left exactly descriptors 0 to 3 with
+   sockets at 0 and 3, and executed its sealed memory file, then serves
+   commands; 'q' reports the result. */
 static _Noreturn void role_main(void)
 {
     int death = 0;
     alarm(CHILD_TIMEOUT_SECONDS);
     role_clean = !prctl(PR_GET_PDEATHSIG, &death) && death == SIGKILL &&
-                 count_own_fds() == 4 && is_socket(0) && is_socket(3);
+                 count_own_fds() == 4 && is_socket(0) && is_socket(3) && runs_sealed_copy();
     record_bytes(source_words, APPROVAL_WORDS, submit_source);
     record_bytes(write_words, APPROVAL_WORDS, submit_write);
     child_loop(0, 3);
@@ -386,7 +455,7 @@ static struct child launch(struct writ_supervisor *sup, uint32_t worker, int *cl
    descriptor 0 and `channel` as its descriptor 3. On refusal or failure the
    returned child has pidfd -1, and `*started` says whether anything still
    holds the command socket's other end (a started process would). */
-static struct child launch_program(struct writ_supervisor *sup, uint32_t index, int channel, const char *path,
+static struct child launch_program(struct writ_supervisor *sup, uint32_t index, int channel, const char *name,
                                    struct writ_owner_reply *r, int *started)
 {
     char *argv[] = { "supervisor-owner-role", "--role", NULL };
@@ -394,7 +463,7 @@ static struct child launch_program(struct writ_supervisor *sup, uint32_t index, 
     int pair[2];
     if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, pair)) die("socketpair role");
     pid_t pid;
-    int pidfd = writ_supervisor_launch_role(sup, index, channel, pair[1], path, argv, envp, &pid, r);
+    int pidfd = writ_supervisor_launch_role(sup, index, channel, pair[1], records, name, argv, envp, &pid, r);
     int saved = errno;
     close(pair[1]);
     if (started) {
@@ -408,7 +477,7 @@ static struct child launch_program(struct writ_supervisor *sup, uint32_t index, 
 static struct child launch_role(struct writ_supervisor *sup, uint32_t index, int channel,
                                 struct writ_owner_reply *r, int *started)
 {
-    return launch_program(sup, index, channel, "/proc/self/exe", r, started);
+    return launch_program(sup, index, channel, "role-program", r, started);
 }
 
 /* Whether the role process passed its launch checks. */
@@ -418,6 +487,9 @@ static int role_reports_clean(struct child *c)
     if (send(c->cmd, &op, 1, MSG_NOSIGNAL) != 1 || recv(c->cmd, &reply, 1, 0) != 1) return 0;
     return reply == 'k';
 }
+
+/* Cleared by role_programs: provision without launching roles 1 and 2. */
+static int launch_roles = 1;
 
 static void begin_raw(struct scenario *s, const struct writ_clock_sample *samples, size_t count,
                       int with_fake, const char *provision)
@@ -442,11 +514,15 @@ static void begin_raw(struct scenario *s, const struct writ_clock_sample *sample
         if (!s->provisioned) { errno = EPROTO; die("provision canary"); }
         /* Workers and role processes can be launched only once provisioned. */
         s->w = launch(&s->sup, 1, &s->worker_clean);
+        s->a = s->b = (struct child){ -1, -1, 1 };
+    }
+    if (provision && launch_roles) {
+        struct writ_owner_reply r;
         s->a = launch_role(&s->sup, 1, ch[1], &r, NULL);
         if (s->a.pidfd < 0) die("launch role 1");
         s->b = launch_role(&s->sup, 2, ch[1], &r, NULL);
         if (s->b.pidfd < 0) die("launch role 2");
-    } else {
+    } else if (!provision) {
         /* Unprovisioned: no role can be launched, so these are unregistered. */
         s->a = spawn(ch[1]);
         s->b = spawn(ch[1]);
@@ -817,7 +893,7 @@ static void role_launching(void)
     check(role_reports_clean(&s.a) && role_reports_clean(&s.b) && s.sup.roles.count == 2 &&
           s.sup.roles.role[0].index == 1 && s.sup.roles.role[1].index == 2 && s.sup.role_pidfds == 2 &&
           s.sup.role_pidfd[0] == s.a.pidfd && s.sup.role_pidfd[1] == s.b.pidfd,
-          "launched_roles_clean", "roles 1 and 2 launched after ROLE_ADMITTED and registered by pidfs identity; each has parent-death SIGKILL and only descriptors 0-3, sockets at 0 and 3");
+          "launched_roles_clean", "roles 1 and 2 launched after ROLE_ADMITTED and registered by pidfs identity; each runs its memory file, sealed against write, shrink, grow and seal, with parent-death SIGKILL and only descriptors 0-3, sockets at 0 and 3");
 
     struct writ_owner_reply r;
     int ok = 1;
@@ -846,6 +922,101 @@ static void role_launching(void)
     check(serve(&s, &served) == 0 && is(&served, WRIT_OWNER_CHANNEL_DENIED, 0, 0),
           "test_spawned_sender_denied", "a process the test started itself, sharing the channel: CHANNEL_DENIED");
     end(&s);
+}
+
+/* The program a role runs is the one the record pins, in a protected file.
+   Roles are not launched at the start here, so role 1 is still free. */
+static void role_programs(void)
+{
+    struct scenario s;
+    launch_roles = 0;
+    begin(&s, NULL, 0);
+    launch_roles = 1;
+    struct writ_owner_reply r;
+    static const char *const refused[] = { "notelf", "shared-program", "linked-program", "fifo" };
+    int ok = 1;
+    for (size_t i = 0; i < 4; ++i) {
+        int started = 1;
+        errno = 0;
+        struct child c = launch_program(&s.sup, 1, s.channel, refused[i], &r, &started);
+        ok = ok && c.pidfd < 0 && errno == EPERM && r.outcome == WRIT_OWNER_ROLE_REFUSED && !started &&
+             s.sup.sequence == 2 + i;
+    }
+    check(ok && !s.sup.failed && !s.sup.contained && s.sup.roles.count == 0,
+          "role_program_refused", "role 1 with an unpinned program, a group-writable or linked copy of the pinned one, or a FIFO: ROLE_REFUSED, nothing started, not fail-stop");
+
+    int started = 1;
+    uint32_t sequence = s.sup.sequence;
+    errno = 0;
+    struct child c = launch_program(&s.sup, 1, s.channel, "program-symlink", &r, &started);
+    int symlink_refused = c.pidfd < 0 && errno == ELOOP && !started && s.sup.sequence == sequence;
+    errno = 0;
+    c = launch_program(&s.sup, 1, s.channel, "absent-program", &r, &started);
+    check(symlink_refused && c.pidfd < 0 && errno == ENOENT && !started && s.sup.sequence == sequence && !s.sup.failed,
+          "role_program_not_resolved", "a symlink to the pinned program (ELOOP) and a missing program (ENOENT): nothing sent or started, not fail-stop");
+
+    s.a = launch_role(&s.sup, 1, s.channel, &r, &started);
+    check(s.a.pidfd >= 0 && r.outcome == WRIT_OWNER_ROLE_ADMITTED && role_reports_clean(&s.a) &&
+          s.sup.sequence == sequence + 1 && s.sup.roles.count == 1 && s.sup.roles.role[0].index == 1,
+          "role_pinned_program_admitted", "after the refusals, the protected copy whose digest is pinned: ROLE_ADMITTED, running from its sealed memory file");
+    end(&s);
+}
+
+static int digest_hex_is(const char *message, size_t length, size_t repeat, const char *want)
+{
+    struct writ_sha256 h;
+    unsigned char digest[32];
+    char hex[65];
+    writ_sha256_init(&h);
+    for (size_t i = 0; i < repeat; ++i) writ_sha256_update(&h, message, length);
+    writ_sha256_final(&h, digest);
+    for (unsigned int i = 0; i < 32; ++i) snprintf(hex + 2 * i, 3, "%02x", digest[i]);
+    return !strcmp(hex, want);
+}
+
+/* FIPS 180-4 examples, and the record's synthetic pins are those digests. */
+static void sha256_vectors(void)
+{
+    int known = digest_hex_is("abc", 3, 1, "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad") &&
+        digest_hex_is("", 0, 1, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855") &&
+        digest_hex_is("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", 56, 1,
+                      "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1") &&
+        digest_hex_is("a", 1, 1000000, "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0");
+    struct writ_sha256 h;
+    unsigned char abc[32], empty[32];
+    uint32_t words[8];
+    writ_sha256_init(&h);
+    writ_sha256_update(&h, "abc", 3);
+    writ_sha256_final(&h, abc);
+    writ_sha256_init(&h);
+    writ_sha256_final(&h, empty);
+    digest_words(abc, words);
+    int pins = !memcmp(words, canary_words + PIN_ROLE1, sizeof words);
+    digest_words(empty, words);
+    pins = pins && !memcmp(words, canary_words + PIN_ROLE2, sizeof words);
+    check(known && pins, "sha256_vectors", "FIPS 180-4 abc, empty, 448-bit and million-a digests; the canary pins are the abc and empty digests");
+}
+
+/* Exact ROLE frames: SupervisorRoleLaunchTests.abc_hex() for st_mode
+   0o100755, one link, owner and euid 1000 and the abc digest. */
+static void role_formatting(void)
+{
+    static char frame[WRIT_OWNER_FRAME_CAP];
+    struct stat st;
+    memset(&st, 0, sizeof st);
+    st.st_mode = S_IFREG | 0755;
+    st.st_nlink = 1;
+    st.st_uid = 1000;
+    struct writ_sha256 h;
+    unsigned char abc[32];
+    writ_sha256_init(&h);
+    writ_sha256_update(&h, "abc", 3);
+    writ_sha256_final(&h, abc);
+    const char *want = "LINUXSUP1\tROLE\t1\t0\t0\t0\ted81000001000000e8030000e8030000"
+                       "bf1678baeacf018fde4041412322ae5da36103b09c7a179661ff10b4ad1500f2\n";
+    size_t n = writ_owner_format_role(1, &st, 1000, abc, frame);
+    check(n == strlen(want) && !memcmp(frame, want, n), "frame_role_exact",
+          "mode, links, owner, euid and digest words as the Bend fixture abc_hex()");
 }
 
 /* Exact PROVISION frames: facts by number, the link count saturated. */
@@ -912,29 +1083,44 @@ static void peer_role_fails_stop(uint32_t index, const char *name, const char *d
     end(&s);
 }
 
-/* After ROLE_ADMITTED (the fake admits role 5) the program cannot be
-   executed: the call reports failure, not a pidfd, and the supervisor
-   fail-stops, since the interpreter now counts role 5 as bound. */
+/* After ROLE_ADMITTED (the fake admits role 5 whatever the digest) the
+   sealed copy cannot be executed: the call reports failure, not a pidfd, and
+   the supervisor fail-stops, since the interpreter now counts role 5 as
+   bound. */
 static void role_exec_failure(void)
 {
     struct scenario s;
     begin_with(&s, NULL, 0, 1);
-    char missing[300];
-    snprintf(missing, sizeof missing, "%s/absent-program", records_path);
     struct writ_owner_reply r;
     int started = 1;
     uint32_t sequence = s.sup.sequence;
     errno = 0;
-    struct child c = launch_program(&s.sup, 5, s.channel, missing, &r, &started);
-    check(c.pidfd < 0 && errno == ENOENT && r.outcome == WRIT_OWNER_ROLE_ADMITTED && !started &&
+    struct child c = launch_program(&s.sup, 5, s.channel, "notelf", &r, &started);
+    check(c.pidfd < 0 && errno == ENOEXEC && r.outcome == WRIT_OWNER_ROLE_ADMITTED && !started &&
           s.sup.sequence == sequence + 1 && s.sup.failed && s.sup.contained && s.sup.roles.count == 2 &&
           s.sup.role_pidfds == 2 && interpreter_killed(&s),
-          "role_exec_failure_fail_stop", "admitted role 5 whose program is missing: -1 with the child's ENOENT, child reaped, not registered, fail-stop");
+          "role_exec_failure_fail_stop", "admitted role 5 whose sealed copy is not executable: -1 with the child's ENOEXEC, child reaped, not registered, fail-stop");
+    end(&s);
+}
+
+/* An admission (the fake admits role 6 whatever it is sent) for a file that
+   is not regular leaves nothing to execute: fail-stop, nothing started. */
+static void role_unregular_admitted(void)
+{
+    struct scenario s;
+    begin_with(&s, NULL, 0, 1);
+    struct writ_owner_reply r;
+    int started = 1;
+    struct child c = launch_program(&s.sup, 6, s.channel, "fifo", &r, &started);
+    check(c.pidfd < 0 && r.outcome == WRIT_OWNER_ROLE_ADMITTED && !started && s.sup.failed &&
+          s.sup.roles.count == 2 && interpreter_killed(&s),
+          "role_unregular_admitted_fail_stop", "ROLE_ADMITTED for a FIFO: nothing to execute, fail-stop, nothing left running");
     end(&s);
 }
 
 static void malformed_peer(void)
 {
+    role_unregular_admitted();
     peer_role_fails_stop(7, "peer_role_wrong_outcome", "SERVED for ROLE: fail-stop, interpreter killed, nothing started");
     peer_role_fails_stop(8, "peer_role_effect", "ROLE_ADMITTED with S1: fail-stop, nothing started");
     peer_role_fails_stop(9, "peer_role_contains", "ROLE_ADMITTED requiring containment: fail-stop, nothing started");
@@ -1008,8 +1194,11 @@ int main(int argc, char **argv)
     reply_decoding();
     frame_formatting();
     provision_formatting();
+    sha256_vectors();
+    role_formatting();
     launching();
     role_launching();
+    role_programs();
     provisioning();
     boottime();
     ordered_revocation();

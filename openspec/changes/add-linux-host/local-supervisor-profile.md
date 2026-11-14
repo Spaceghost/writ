@@ -261,9 +261,12 @@ file facts are the only gate, and they do not authenticate the operator. Through
 the driver's API, workers are registered only as it launches them, after
 provisioning, and role processes only as it launches them after Bend admits
 their provisioned index (`SupervisorRoleLaunch.bend`); the receiver attributes
-through that table. The program a role runs is still the caller's argument,
-so binding each role to a trusted program, and each worker lifetime and
-session to its principal (LH-011), remains open. The issuer itself is still the synthetic canary with its
+through that table. The record (version 2) also pins each role's program by
+SHA-256: the driver hashes a sealed copy of the named file and executes only
+that copy, and Bend admits it only when the file is protected and the digest
+is the pin. The record's writer is trusted rather than authenticated, so
+authenticating the administrator, and binding each worker lifetime and
+session to its principal (LH-011), remain open. The issuer itself is still the synthetic canary with its
 in-process approvals, the submitting role is not told a new approval's id, and
 the clock samples are scripted. A deployment must serialize every relevant
 authority/policy change or treat the owner as incomplete.

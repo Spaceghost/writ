@@ -1,0 +1,26 @@
+bend protection-ignored 1 | FAIL: SupervisorRoleLaunch refuses an unprotected program file
+bend digest-ignored 1 | FAIL: SupervisorRoleLaunch refuses a program whose digest is not the role's pin
+bend last-word-ignored 1 | FAIL: SupervisorRoleLaunch refuses a program whose digest is not the role's pin
+bend any-owner 1 | FAIL: SupervisorRoleLaunch refuses an unprotected program file
+bend root-refused 1 | FAIL: SupervisorRoleLaunch admits each provisioned role's pinned program once
+bend links-ignored 1 | FAIL: SupervisorRoleLaunch refuses an unprotected program file
+bend type-ignored 1 | FAIL: SupervisorRoleLaunch refuses an unprotected program file
+bend shared-write-ignored 1 | FAIL: SupervisorRoleLaunch refuses an unprotected program file
+bend refusal-binds 1 | FAIL: SupervisorRoleLaunch refuses a program whose digest is not the role's pin
+bend argument-trailing 1 | FAIL: SupervisorWire ROLE with a program argument of the wrong size stops
+bend programs-unchecked 1 | FAIL: SupervisorProvision refuses invalid, empty or unbacked role maps, ambiguous placements and unpinned role programs
+bend totals-unchecked 1 | FAIL: SupervisorProvision refuses invalid, empty or unbacked role maps, ambiguous placements and unpinned role programs
+bend duplicates-allowed 0 | NO FAILURE
+bend version-1-kept 1 | FAIL: SupervisorWire ROLE uses the role map and programs installed by PROVISION
+bend programs-trailing 1 | FAIL: SupervisorProvision refuses oversized, out-of-range, misaligned and short records
+bend adoption-drops-programs 1 | FAIL: SupervisorWire ROLE uses the role map and programs installed by PROVISION
+c path-executed 1 | FAIL launched_roles_clean: roles 1 and 2 launched after ROLE_ADMITTED and registered by pidfs identity; each runs its memory file, sealed against write, shrink, grow and seal, with parent-death SIGKILL and only descriptors 0-3, sockets at 0 and 3
+c symlinks-followed 1 | FAIL role_program_not_resolved: a symlink to the pinned program (ELOOP) and a missing program (ENOENT): nothing sent or started, not fail-stop
+c links-not-sent 1 | FAIL role_program_refused: role 1 with an unpinned program, a group-writable or linked copy of the pinned one, or a FIFO: ROLE_REFUSED, nothing started, not fail-stop
+c mode-not-sent 1 | FAIL frame_role_exact: mode, links, owner, euid and digest words as the Bend fixture abc_hex()
+c digest-byte-order 1 | FAIL frame_role_exact: mode, links, owner, euid and digest words as the Bend fixture abc_hex()
+c hash-partial 1 | ERROR launch role 1: Operation not permitted
+c seal-skipped 1 | FAIL launched_roles_clean: roles 1 and 2 launched after ROLE_ADMITTED and registered by pidfs identity; each runs its memory file, sealed against write, shrink, grow and seal, with parent-death SIGKILL and only descriptors 0-3, sockets at 0 and 3
+c sha-round-constant 1 | FAIL sha256_vectors: FIPS 180-4 abc, empty, 448-bit and million-a digests; the canary pins are the abc and empty digests
+c sha-padding 1 | FAIL sha256_vectors: FIPS 180-4 abc, empty, 448-bit and million-a digests; the canary pins are the abc and empty digests
+c unregular-admitted 0 | NO FAILURE

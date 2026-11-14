@@ -1,0 +1,22 @@
+PASS: SupervisorRoleLaunch admits each provisioned role's pinned program once
+PASS: SupervisorRoleLaunch refuses zero, unmapped and invalid-map indices
+PASS: SupervisorRoleLaunch refuses a second launch for a bound index
+PASS: SupervisorRoleLaunch refuses an unprotected program file
+PASS: SupervisorRoleLaunch refuses a program whose digest is not the role's pin
+PASS: SupervisorRoleLaunch refusals bind nothing
+PASS: SupervisorWire ROLE replies exactly without containment
+PASS: SupervisorWire a contained owner still admits a role launch for cleanup
+PASS: SupervisorWire launches nothing without provisioned programs
+PASS: SupervisorWire ROLE before provisioning or with extra fields stops
+PASS: SupervisorWire ROLE with a program argument of the wrong size stops
+PASS: SupervisorWire ROLE uses the role map and programs installed by PROVISION
+SupervisorRoleLaunch: 12 checks passed
+PASS: SupervisorProvision canary record installs its role map and program digests over the canary issuer root
+PASS: SupervisorProvision refuses unprotected configuration facts before decoding
+PASS: SupervisorProvision refuses oversized, out-of-range, misaligned and short records
+PASS: SupervisorProvision refuses unknown kinds, zero principals and short sections
+PASS: SupervisorProvision refuses invalid, empty or unbacked role maps, ambiguous placements and unpinned role programs
+PASS: SupervisorProvision adopts only a record whose root is the retained issuer's root
+PASS: SupervisorWire provisions first, then attributes revokes through the installed map
+PASS: SupervisorWire refuses unprovisioned frames, refused records and reprovisioning
+SupervisorProvision: 8 checks passed

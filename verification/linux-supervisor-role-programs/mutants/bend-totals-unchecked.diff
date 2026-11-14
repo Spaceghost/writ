@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -342,7 +342,7 @@
+ # Every role has exactly one program and no program names anything else:
+ # with one entry per role, equal totals leave no room for a stray entry.
+ def programs_consistent(+roles: C.RoleMap, +programs: SR.Programs) -> Bool:
+-  each_role_once(roles, programs) && Nat.is_eq(role_total(roles), program_total(programs))
++  each_role_once(roles, programs)
+ 
+ # Public entry point (exported for tests): None when the record is consistent.
+ def record_fault(record: Record) -> Maybe<&2, ProvisionError>:

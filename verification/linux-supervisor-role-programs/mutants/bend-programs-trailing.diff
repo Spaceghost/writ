@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -232,7 +232,7 @@
+ def finish(+live: T.Stamp, +roles: C.RoleMap, +directory: Iss.Authorities, +placements: Iss.Placements,
+     taken: ProgramsTaken) -> RecordRead:
+   match taken:
+-    case ProgramsTaken{programs, []}: RecordRead{Record{live, roles, directory, placements, programs}}
++    case ProgramsTaken{programs, _}: RecordRead{Record{live, roles, directory, placements, programs}}
+     case ProgramsTaken{_, _}: RecordBad{RecordLength{}}
+     case ProgramsBad{reason}: RecordBad{reason}
+ 

@@ -24,8 +24,9 @@
    after PROVISIONED; the struct's fields are not an enforcement boundary.
    Likewise a channel role index names only a process the supervisor
    started with writ_supervisor_launch_role after Bend admitted that index
-   (ROLE_ADMITTED); the receiver attributes datagrams through that internal
-   table, never a caller-supplied one.
+   and the program's digest against the record's pin (ROLE_ADMITTED); the
+   receiver attributes datagrams through that internal table, never a
+   caller-supplied one.
    Not established here: an authenticated operator (file ownership and mode
    are local facts), an installed issuer (the issuer the interpreter retains
    comes from its provisioning module; the only one is a synthetic test
@@ -46,6 +47,8 @@
 #define WRIT_OWNER_STOPS 8
 /* "LINUXSUP1\tCONTROL\t" + four U32 fields + payload hex + LF. */
 #define WRIT_OWNER_FRAME_CAP (64u + 2u * WRIT_CHANNEL_PAYLOAD_MAX)
+/* The largest role program the driver copies and hashes. */
+#define WRIT_OWNER_PROGRAM_MAX ((size_t)64 << 20)
 
 /* The sample kinds of LH.ClockSample, in LINUXSUP1 order. */
 enum writ_clock_kind {
@@ -145,29 +148,43 @@ int writ_supervisor_provision(struct writ_supervisor *s, int dirfd, const char *
 int writ_supervisor_launch_worker(struct writ_supervisor *s, uint32_t worker, const char *path,
                                   char *const argv[], char *const envp[], pid_t *pid);
 
-/* Asks Bend whether a process may be started for channel role `index`
-   (LINUXSUP1 ROLE; SupervisorRoleLaunch.bend) and, only on ROLE_ADMITTED,
-   starts `path` as for writ_supervisor_launch_worker except for its
-   descriptors: `input` becomes its descriptor 0 and `channel` (its end of the
-   supervisor channel) its descriptor 3; it keeps 1 and 2 and nothing else.
-   The child's pidfs identity is then registered under `index` in the
-   supervisor's own role table, which writ_supervisor_serve_one uses. The
-   caller keeps `input` and `channel` (the child has its own copies). On
-   success, which means execve succeeded, returns the pidfd, owned by the
-   supervisor as for workers, and sets `*pid`; the caller reaps the child.
-   -1 with EPERM (not provisioned, failed) or EBADF (a negative descriptor)
-   or ENOSPC (the table is full) before anything is sent; -1 with EPERM and
-   `reply` set after ROLE_REFUSED, which is not fail-stop and starts nothing;
-   -1 on fail-stop otherwise: a reply other than a clean ROLE_ADMITTED or
-   ROLE_REFUSED (containment or an effect included), or after admission a
-   clone3 failure, a child that failed before or in execve (it is reaped;
-   errno is the child's), or a registration failure (the child is killed and
-   reaped). A bound index with no process would differ from Bend's state.
-   The admitted index stays bound for the interpreter's lifetime, even after
-   its process exits. */
+/* Asks Bend whether the program `name` (resolved beneath `dirfd`) may be
+   started as channel role `index`, and starts it only on ROLE_ADMITTED.
+   The program is resolved as writ_supervisor_provision resolves its file
+   (O_PATH, no symlink, no magic link, no escape from `dirfd`); for a regular
+   file its bytes, at most WRIT_OWNER_PROGRAM_MAX, are copied into a sealed
+   memory file and hashed with SHA-256. LINUXSUP1 ROLE carries its st_mode,
+   st_nlink, st_uid, the effective user ID and that digest; Bend
+   (SupervisorRoleLaunch.bend) decides from the provisioned role map and the
+   record's program pins. On ROLE_ADMITTED the child is started as for
+   writ_supervisor_launch_worker except that it executes exactly the sealed
+   copy (execveat with AT_EMPTY_PATH, never the path) and has `input` as
+   descriptor 0 and `channel` (its end of the supervisor channel) as
+   descriptor 3, keeping 1 and 2 and nothing else. The child's pidfs identity
+   is registered under `index` in the supervisor's own role table, which
+   writ_supervisor_serve_one uses. The caller keeps `dirfd`, `input` and
+   `channel` (the child has its own copies of the last two).
+   On success, which means execveat succeeded, returns the pidfd, owned by
+   the supervisor as for workers, and sets `*pid`; the caller reaps the child.
+   -1 with EPERM (not provisioned, failed), EBADF (a negative descriptor) or
+   ENOSPC (the table is full), or with the errno of resolving, reading or
+   sealing the program (EFBIG when too large, EACCES when vm.memfd_noexec
+   forbids executable memory files), before anything is sent; -1
+   with EPERM and `reply` set after ROLE_REFUSED, which is not fail-stop and
+   starts nothing; -1 on fail-stop otherwise: a reply other than a clean
+   ROLE_ADMITTED or ROLE_REFUSED (containment or an effect included), an
+   admission for a file that is not regular, or after admission a clone3
+   failure, a child that failed before or in execveat (it is reaped; errno is
+   the child's), or a registration failure (the child is killed and reaped).
+   A bound index with no process would differ from Bend's state. A role
+   program must be an ELF executable: an interpreter script cannot be run
+   from a close-on-exec memory file, so an admitted script fails in execveat
+   (ENOENT) and that is fail-stop. The
+   admitted index stays bound for the interpreter's lifetime, even after its
+   process exits. */
 int writ_supervisor_launch_role(struct writ_supervisor *s, uint32_t index, int channel, int input,
-                                const char *path, char *const argv[], char *const envp[], pid_t *pid,
-                                struct writ_owner_reply *reply);
+                                int dirfd, const char *name, char *const argv[], char *const envp[],
+                                pid_t *pid, struct writ_owner_reply *reply);
 
 /* Closes every pidfd the supervisor owns (launched workers and role
    processes) and empties both tables. Kills and reaps nothing. End of life
@@ -205,6 +222,10 @@ int writ_supervisor_add_worker(struct writ_supervisor *s, uint32_t worker, int p
    its length, or 0 when it cannot be formed. */
 size_t writ_owner_format_provision(const struct stat *st, uint32_t euid, const unsigned char *bytes,
                                    size_t length, char frame[WRIT_OWNER_FRAME_CAP]);
+/* Test seam: the ROLE frame (with LF) for one program's facts and SHA-256;
+   returns its length, or 0 when it cannot be formed. */
+size_t writ_owner_format_role(uint32_t index, const struct stat *st, uint32_t euid, const unsigned char digest[32],
+                              char frame[WRIT_OWNER_FRAME_CAP]);
 /* Test seam: decode one reply line (LF removed) expecting `sequence`. */
 int writ_owner_decode(char *line, uint32_t sequence, struct writ_owner_reply *reply);
 /* Test seam: the CONTROL frame (with LF) for one record and sample; returns

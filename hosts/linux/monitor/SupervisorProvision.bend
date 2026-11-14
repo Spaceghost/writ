@@ -3,6 +3,7 @@ import ./LinuxHost.bend as LH
 import ./LinuxJointAuthority.bend as JA
 import ./LocalChannel.bend as C
 import ./SupervisorOwner.bend as O
+import ./SupervisorRoleLaunch.bend as SR
 import ../../../Issuance.bend as Iss
 import ../../../Transfer.bend as T
 
@@ -17,11 +18,13 @@ import ../../../Transfer.bend as T
 #   2. whether the bytes are one well-formed provisioning record (`decode`);
 #   3. whether the record is internally consistent (`record_fault`): a valid,
 #      nonempty role map whose every principal is an authority in the record's
-#      own directory, and unambiguous placements;
+#      own directory, unambiguous placements, and exactly one program digest
+#      for each role and none for anything else;
 #   4. whether the record's issuer root (live stamp, directory, placements)
 #      is exactly the root of the issuer the owner retains (`adopt`).
-# Only then does the role map become the owner's. Nothing else installs one,
-# and a record never adds an approval, a grant or a clock reading.
+# Only then does the role map become the owner's, and the program digests the
+# wire's launch admission (`SupervisorRoleLaunch`). Nothing else installs
+# either, and a record never adds an approval, a grant or a clock reading.
 #
 # Failure behavior. Any refusal leaves the profile unprovisioned; the wire
 # (SupervisorWire) then stops the interpreter, so no control message is ever
@@ -36,14 +39,16 @@ import ../../../Transfer.bend as T
 # --- Record layout ---------------------------------------------------------------
 #
 # Little-endian U32 words, as the control codec (SupervisorOwner):
-#   version (1)
+#   version (2)
 #   live stamp: graph, policy, authority
 #   role count R, then R x (role index, principal)
 #   authority count A, then A x (kind, principal, domain)
 #       kind 1 ReadAuthority (read domain), 2 WriteAuthority (write domain)
 #   placement count P, then P x (kind, object, version, domain)
 #       kind 1 SourceAt (read domain), 2 DestinationAt (write domain)
-# Nothing may follow the placements. At most `max_record_bytes()` bytes. A
+#   program count G, then G x (role index, 8 digest words)
+#       the SHA-256 of the program that role runs, as big-endian words
+# Nothing may follow the programs. Version 1 (no programs) is refused. At most `max_record_bytes()` bytes. A
 # principal is never 0.
 # Check order: too long -> RecordTooLong; a byte above 255 -> RecordRange; a
 # remainder of bytes -> RecordMisaligned; version -> RecordVersion; a section
@@ -72,27 +77,30 @@ type ProvisionError is Data:
   RolesEmpty{}
   RoleWithoutAuthority{}
   PlacementsInvalid{}
+  ProgramsInvalid{}
   NoIssuer{}
   IssuerMismatch{}
 
 type Record is Data:
-  Record{live: T.Stamp, roles: C.RoleMap, directory: Iss.Authorities, placements: Iss.Placements}
+  Record{live: T.Stamp, roles: C.RoleMap, directory: Iss.Authorities, placements: Iss.Placements,
+    programs: SR.Programs}
 
 type RecordRead is Data:
   RecordRead{record: Record}
   RecordBad{reason: ProvisionError}
 
-# The installed bootstrap: the role map and the issuer root it was checked with.
+# The installed bootstrap: the role map, the role programs and the issuer root
+# they were checked with.
 type Installed is Data:
-  Installed{roles: C.RoleMap, root: Iss.State}
+  Installed{roles: C.RoleMap, programs: SR.Programs, root: Iss.State}
   Refused{reason: ProvisionError}
 
 type Adoption is Data:
-  Adopted{owner: O.Owner}
+  Adopted{owner: O.Owner, programs: SR.Programs}
   NotAdopted{reason: ProvisionError}
 
 def record_version() -> U32:
-  1
+  2
 
 def max_record_bytes() -> Nat:
   4096n
@@ -202,18 +210,43 @@ def take_placements(+words: +List<U32>, done: Bool, +count: U32) -> PlacementsTa
         take_placements(rest, U32.is_eq(count, 1), (count - 1 : U32)))
     case _ False{}: PlacementsBad{RecordLength{}}
 
+type ProgramsTaken is Data:
+  ProgramsTaken{programs: SR.Programs, rest: +List<U32>}
+  ProgramsBad{reason: ProvisionError}
+
+def program_then(+index: U32, +digest: SR.Digest, taken: ProgramsTaken) -> ProgramsTaken:
+  match taken:
+    case ProgramsTaken{programs, rest}: ProgramsTaken{SR.Program{U32.to_nat(index), digest, programs}, rest}
+    case ProgramsBad{reason}: ProgramsBad{reason}
+
+def take_programs(+words: +List<U32>, done: Bool, +count: U32) -> ProgramsTaken:
+  match words done:
+    case w True{}: ProgramsTaken{SR.NoPrograms{}, w}
+    case +index <> +a <> +b <> +c <> +d <> +e <> +f <> +g <> +h <> +rest False{}:
+      program_then(index, SR.Digest{a, b, c, d, e, f, g, h},
+        take_programs(rest, U32.is_eq(count, 1), (count - 1 : U32)))
+    case _ False{}: ProgramsBad{RecordLength{}}
+
 # --- Record ------------------------------------------------------------------------
 
-def finish(+live: T.Stamp, +roles: C.RoleMap, +directory: Iss.Authorities, taken: PlacementsTaken) -> RecordRead:
+def finish(+live: T.Stamp, +roles: C.RoleMap, +directory: Iss.Authorities, +placements: Iss.Placements,
+    taken: ProgramsTaken) -> RecordRead:
   match taken:
-    case PlacementsTaken{placements, []}: RecordRead{Record{live, roles, directory, placements}}
+    case ProgramsTaken{programs, []}: RecordRead{Record{live, roles, directory, placements, programs}}
+    case ProgramsTaken{_, _}: RecordBad{RecordLength{}}
+    case ProgramsBad{reason}: RecordBad{reason}
+
+def after_placements(+live: T.Stamp, +roles: C.RoleMap, +directory: Iss.Authorities, taken: PlacementsTaken) -> RecordRead:
+  match taken:
+    case PlacementsTaken{placements, +count <> +rest}:
+      finish(live, roles, directory, placements, take_programs(rest, U32.is_eq(count, 0), count))
     case PlacementsTaken{_, _}: RecordBad{RecordLength{}}
     case PlacementsBad{reason}: RecordBad{reason}
 
 def after_authorities(+live: T.Stamp, +roles: C.RoleMap, taken: AuthoritiesTaken) -> RecordRead:
   match taken:
     case AuthoritiesTaken{directory, +count <> +rest}:
-      finish(live, roles, directory, take_placements(rest, U32.is_eq(count, 0), count))
+      after_placements(live, roles, directory, take_placements(rest, U32.is_eq(count, 0), count))
     case AuthoritiesTaken{_, _}: RecordBad{RecordLength{}}
     case AuthoritiesBad{reason}: RecordBad{reason}
 
@@ -291,19 +324,41 @@ def roles_empty(roles: C.RoleMap) -> Bool:
     case C.NoRoles{}: True{}
     case C.Role{_, _, _}: False{}
 
+def role_total(roles: C.RoleMap) -> Nat:
+  match roles:
+    case C.NoRoles{}: 0n
+    case C.Role{_, _, rest}: (1n + role_total(rest) : Nat)
+
+def program_total(programs: SR.Programs) -> Nat:
+  match programs:
+    case SR.NoPrograms{}: 0n
+    case SR.Program{_, _, rest}: (1n + program_total(rest) : Nat)
+
+def each_role_once(roles: C.RoleMap, +programs: SR.Programs) -> Bool:
+  match roles:
+    case C.NoRoles{}: True{}
+    case C.Role{index, _, rest}: Nat.is_eq(SR.program_count(programs, index), 1n) && each_role_once(rest, programs)
+
+# Every role has exactly one program and no program names anything else:
+# with one entry per role, equal totals leave no room for a stray entry.
+def programs_consistent(+roles: C.RoleMap, +programs: SR.Programs) -> Bool:
+  each_role_once(roles, programs) && Nat.is_eq(role_total(roles), program_total(programs))
+
 # Public entry point (exported for tests): None when the record is consistent.
 def record_fault(record: Record) -> Maybe<&2, ProvisionError>:
   match record:
-    case Record{_, +roles, +directory, +placements}:
+    case Record{_, +roles, +directory, +placements, +programs}:
       first_fault(Bool.not(C.valid_roles(roles)), RolesInvalid{},
         first_fault(roles_empty(roles), RolesEmpty{},
           first_fault(Bool.not(roles_backed(roles, directory)), RoleWithoutAuthority{},
-            first_fault(Bool.not(Iss.placements_valid(placements)), PlacementsInvalid{}, None{}))))
+            first_fault(Bool.not(Iss.placements_valid(placements)), PlacementsInvalid{},
+              first_fault(Bool.not(programs_consistent(roles, programs)), ProgramsInvalid{}, None{})))))
 
 def install_record(fault: Maybe<&2, ProvisionError>, record: Record) -> Installed:
   match fault record:
     case Some{reason} _: Refused{reason}
-    case None{} Record{live, roles, directory, placements}: Installed{roles, Iss.empty(live, directory, placements)}
+    case None{} Record{live, roles, directory, placements, programs}:
+      Installed{roles, programs, Iss.empty(live, directory, placements)}
 
 def install_read(read: RecordRead) -> Installed:
   match read:
@@ -369,22 +424,24 @@ def retained_issuer(state: LH.State) -> Maybe<&2, Iss.State>:
     case LH.State{_, _, _, JA.Joint{issuer, _, _, _, _, _, _, _, _}}: Some{issuer}
     case _: None{}
 
-def adopt_matched(matched: Bool, +roles: C.RoleMap, +state: LH.State) -> Adoption:
+def adopt_matched(matched: Bool, +roles: C.RoleMap, +programs: SR.Programs, +state: LH.State) -> Adoption:
   match matched:
-    case True{}: Adopted{O.Owner{roles, state}}
+    case True{}: Adopted{O.Owner{roles, state}, programs}
     case False{}: NotAdopted{IssuerMismatch{}}
 
-def adopt_issuer(issuer: Maybe<&2, Iss.State>, +roles: C.RoleMap, +root: Iss.State, +state: LH.State) -> Adoption:
+def adopt_issuer(issuer: Maybe<&2, Iss.State>, +roles: C.RoleMap, +programs: SR.Programs, +root: Iss.State,
+    +state: LH.State) -> Adoption:
   match issuer:
     case None{}: NotAdopted{NoIssuer{}}
-    case Some{+held}: adopt_matched(same_root(root, held), roles, state)
+    case Some{+held}: adopt_matched(same_root(root, held), roles, programs, state)
 
 # Public entry point: the owner the supervisor runs, when `installed` was
 # accepted and its root is the root of the issuer `state` retains. The state
-# itself is unchanged; only the role map is new.
+# itself is unchanged; only the role map (and the programs, returned beside
+# the owner for launch admission) is new.
 def adopt(+state: LH.State, installed: Installed) -> Adoption:
   match installed:
-    case Installed{+roles, +root}: adopt_issuer(retained_issuer(state), roles, root, state)
+    case Installed{+roles, +programs, +root}: adopt_issuer(retained_issuer(state), roles, programs, root, state)
     case Refused{reason}: NotAdopted{reason}
 
 # --- Encoding (trusted test writer) --------------------------------------------------
@@ -433,15 +490,27 @@ def placement_count(placements: Iss.Placements) -> U32:
     case Iss.NoPlacements{}: 0
     case Iss.Placements{_, rest}: (1 + placement_count(rest) : U32)
 
+def program_words(programs: SR.Programs) -> +List<U32>:
+  match programs:
+    case SR.NoPrograms{}: []
+    case SR.Program{index, digest, rest}:
+      nat_word(index) <> List.append(&2, U32, SR.digest_words(digest), program_words(rest))
+
+def program_word_count(programs: SR.Programs) -> U32:
+  match programs:
+    case SR.NoPrograms{}: 0
+    case SR.Program{_, _, rest}: (1 + program_word_count(rest) : U32)
+
 # Exported test helper: the words a trusted writer produces for `record`.
 def record_words_of(record: Record) -> +List<U32>:
   match record:
-    case Record{T.Stamp{g, p, a}, +roles, +directory, +placements}:
+    case Record{T.Stamp{g, p, a}, +roles, +directory, +placements, +programs}:
       List.append(&2, U32, [record_version(), nat_word(g), nat_word(p), nat_word(a), role_count(roles)],
         List.append(&2, U32, role_words(roles),
           List.append(&2, U32, [authority_count(directory)],
             List.append(&2, U32, authority_words(directory),
-              placement_count(placements) <> placement_words(placements)))))
+              List.append(&2, U32, placement_count(placements) <> placement_words(placements),
+                program_word_count(programs) <> program_words(programs))))))
 
 # Exported test helper: the bytes of `record`.
 def encode(record: Record) -> +List<U32>:

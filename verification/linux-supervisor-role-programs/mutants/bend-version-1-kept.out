@@ -1,0 +1,12 @@
+PASS: SupervisorRoleLaunch admits each provisioned role's pinned program once
+PASS: SupervisorRoleLaunch refuses zero, unmapped and invalid-map indices
+PASS: SupervisorRoleLaunch refuses a second launch for a bound index
+PASS: SupervisorRoleLaunch refuses an unprotected program file
+PASS: SupervisorRoleLaunch refuses a program whose digest is not the role's pin
+PASS: SupervisorRoleLaunch refusals bind nothing
+PASS: SupervisorWire ROLE replies exactly without containment
+PASS: SupervisorWire a contained owner still admits a role launch for cleanup
+PASS: SupervisorWire launches nothing without provisioned programs
+PASS: SupervisorWire ROLE before provisioning or with extra fields stops
+PASS: SupervisorWire ROLE with a program argument of the wrong size stops
+FAIL: SupervisorWire ROLE uses the role map and programs installed by PROVISION

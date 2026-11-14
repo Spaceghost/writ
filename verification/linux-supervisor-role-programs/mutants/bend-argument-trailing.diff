@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorRoleLaunch.bend
++++ b/hosts/linux/monitor/SupervisorRoleLaunch.bend
+@@ -173,7 +173,7 @@
+ # links, owner, euid, then the digest.
+ def facts_of_words(+words: +List<U32>) -> Maybe<&2, ProgramFacts>:
+   match words:
+-    case +mode <> +links <> +owner <> +euid <> +a <> +b <> +c <> +d <> +e <> +f <> +g <> +h <> []:
++    case +mode <> +links <> +owner <> +euid <> +a <> +b <> +c <> +d <> +e <> +f <> +g <> +h <> _:
+       Some{ProgramFacts{mode, links, owner, euid, Digest{a, b, c, d, e, f, g, h}}}
+     case _: None{}
+ 

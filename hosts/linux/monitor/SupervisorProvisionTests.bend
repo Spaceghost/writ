@@ -1,6 +1,7 @@
 import Base
 import ./SupervisorProvision.bend as SP
 import ./SupervisorWire.bend as SW
+import ./SupervisorRoleLaunch.bend as SR
 import ./SupervisorWireTests.bend as OTW
 import ../../../Transfer.bend as T
 import ./SupervisorOwner.bend as O
@@ -18,12 +19,23 @@ import ../../../Test.bend as Test
 # for domain 5) and 2 -> 102 (write authority for domain 6). The records are
 # SYNTHETIC test bootstrap data written by a trusted test writer.
 
+# SYNTHETIC program digests: role 1 is pinned to SHA-256("abc") and role 2 to
+# SHA-256(""), the FIPS 180-4 test vectors the native SHA-256 is checked with.
+def abc_digest() -> SR.Digest:
+  SR.Digest{3128432319, 2399260650, 1094795486, 1571693091, 2953011619, 2518121116, 3021012833, 4060091821}
+
+def empty_digest() -> SR.Digest:
+  SR.Digest{3820012610, 2566659092, 2600203464, 2574235940, 665731556, 1687917388, 2761267483, 2018687061}
+
+def programs() -> SR.Programs:
+  SR.Program{1n, abc_digest(), SR.Program{2n, empty_digest(), SR.NoPrograms{}}}
+
 def canary() -> SP.Record:
-  SP.Record{TF.stamp(), OT.roles(), IT.directory(), IT.placements()}
+  SP.Record{TF.stamp(), OT.roles(), IT.directory(), IT.placements(), programs()}
 
 # `canary()` as the C test writes it (supervisor-owner-test.c), in hex.
 def canary_hex() -> String:
-  "0100000001000000020000000300000002000000010000006500000002000000660000000500000001000000650000000500000002000000660000000600000001000000670000000900000001000000680000000700000002000000690000000500000004000000010000000a0000000400000005000000010000000b00000004000000070000000200000014000000080000000600000002000000140000000900000006000000"
+  "0200000001000000020000000300000002000000010000006500000002000000660000000500000001000000650000000500000002000000660000000600000001000000670000000900000001000000680000000700000002000000690000000500000004000000010000000a0000000400000005000000010000000b000000040000000700000002000000140000000800000006000000020000001400000009000000060000000200000001000000bf1678baeacf018fde4041412322ae5da36103b09c7a179661ff10b4ad1500f20200000042c4b0e3141cfc98c8f4fb9a24b96f99e441ae274c939b641b9995a455b85278"
 
 # st_mode 0o100600, one link, owner 1000 = euid.
 def protected() -> SP.ConfigFacts:
@@ -54,6 +66,7 @@ def error_index(e: SP.ProvisionError) -> U32:
     case SP.PlacementsInvalid{}: 15
     case SP.NoIssuer{}: 16
     case SP.IssuerMismatch{}: 17
+    case SP.ProgramsInvalid{}: 18
 
 def error_equal(a: SP.ProvisionError, b: SP.ProvisionError) -> Bool:
   U32.is_eq(error_index(a), error_index(b))
@@ -66,7 +79,7 @@ def fault_is(found: Maybe<&2, SP.ProvisionError>, expected: SP.ProvisionError) -
 def refused_with(installed: SP.Installed, expected: SP.ProvisionError) -> Bool:
   match installed:
     case SP.Refused{reason}: error_equal(reason, expected)
-    case SP.Installed{_, _}: False{}
+    case SP.Installed{_, _, _}: False{}
 
 def bytes_refused(bytes: +List<U32>, expected: SP.ProvisionError) -> Bool:
   refused_with(SP.install(protected(), bytes), expected)
@@ -90,11 +103,19 @@ def names(+roles: C.RoleMap, +role: Nat, +principal: Nat) -> Bool:
 def unattributed(+roles: C.RoleMap, +role: Nat) -> Bool:
   denied(C.attribute(roles, C.FromRole{role}))
 
+def pinned_is(pin: Maybe<&2, SR.Digest>, want: SR.Digest) -> Bool:
+  match pin:
+    case Some{found}: SR.digest_equal(found, want)
+    case None{}: False{}
+
+def pins(+installed: SR.Programs, +index: Nat, want: SR.Digest) -> Bool:
+  pinned_is(SR.pinned(installed, index), want)
+
 def installed_canary(installed: SP.Installed) -> Bool:
   match installed:
-    case SP.Installed{+roles, +root}:
+    case SP.Installed{+roles, +installed_programs, +root}:
       SP.same_root(root, IT.initial()) && Iss.valid(root) && names(roles, 1n, 101n) && names(roles, 2n, 102n)
-        && unattributed(roles, 3n)
+        && unattributed(roles, 3n) && pins(installed_programs, 1n, abc_digest()) && pins(installed_programs, 2n, empty_digest())
     case SP.Refused{_}: False{}
 
 def hex_is(hexed: Maybe<&2, +List<U32>>, +bytes: +List<U32>) -> Bool:
@@ -149,29 +170,62 @@ def bounded_accepted(+bytes: +List<U32>, maximum: Nat) -> Bool:
 
 def byte_faults() -> Bool:
   +bytes = SP.encode(canary())
-  bounded_refused(bytes, 167n) && bounded_accepted(bytes, 168n) &&
+  bounded_refused(bytes, 243n) && bounded_accepted(bytes, 244n) &&
   bytes_refused([1, 0, 0, 256], SP.RecordRange{}) &&
   bytes_refused([1, 0, 0], SP.RecordMisaligned{}) &&
   bytes_refused(without_last_word(bytes), SP.RecordLength{}) &&
   bytes_refused(List.append(&2, U32, bytes, [0, 0, 0, 0]), SP.RecordLength{}) &&
-  bytes_refused([1, 0, 0, 0, 1, 0, 0, 0], SP.RecordLength{}) &&
-  bytes_refused(SP.words_bytes([2, 1, 2, 3, 0, 0, 0]), SP.RecordVersion{}) &&
-  bytes_refused([2, 0, 0, 0], SP.RecordVersion{}) &&
+  bytes_refused([2, 0, 0, 0, 1, 0, 0, 0], SP.RecordLength{}) &&
+  bytes_refused(SP.words_bytes([1, 1, 2, 3, 0, 0, 0]), SP.RecordVersion{}) &&
+  bytes_refused(SP.words_bytes([3, 1, 2, 3, 0, 0, 0]), SP.RecordVersion{}) &&
+  bytes_refused([3, 0, 0, 0], SP.RecordVersion{}) &&
+  bytes_refused([2, 0, 0, 0], SP.RecordLength{}) &&
   bytes_refused([], SP.RecordLength{})
 
+def raw_programs(roles: +List<U32>, authorities: +List<U32>, placements: +List<U32>, programs: +List<U32>) -> +List<U32>:
+  SP.words_bytes(List.append(&2, U32, [2, 1, 2, 3], List.append(&2, U32, roles,
+    List.append(&2, U32, authorities, List.append(&2, U32, placements, programs)))))
+
 def raw_record(roles: +List<U32>, authorities: +List<U32>, placements: +List<U32>) -> +List<U32>:
-  SP.words_bytes(List.append(&2, U32, [1, 1, 2, 3], List.append(&2, U32, roles, List.append(&2, U32, authorities, placements))))
+  raw_programs(roles, authorities, placements, [0])
+
+def abc_words() -> +List<U32>:
+  SR.digest_words(abc_digest())
+
+# A program entry shorter than nine words, a count beyond the entries and a
+# word after the programs are length faults.
+def program_words_faults() -> Bool:
+  bytes_refused(raw_programs([1, 1, 101], [1, 1, 101, 5], [0], [1, 1, 7]), SP.RecordLength{}) &&
+  bytes_refused(raw_programs([1, 1, 101], [1, 1, 101, 5], [0], 2 <> 1 <> abc_words()), SP.RecordLength{}) &&
+  bytes_refused(raw_programs([1, 1, 101], [1, 1, 101, 5], [0], List.append(&2, U32, 1 <> 1 <> abc_words(), [9])),
+    SP.RecordLength{})
 
 def word_faults() -> Bool:
   bytes_refused(raw_record([1, 1, 101], [1, 3, 101, 5], [0]), SP.RecordKind{}) &&
   bytes_refused(raw_record([1, 1, 101], [1, 1, 101, 5], [1, 3, 10, 4, 5]), SP.RecordKind{}) &&
   bytes_refused(raw_record([1, 1, 0], [1, 1, 101, 5], [0]), SP.RecordZero{}) &&
   bytes_refused(raw_record([1, 1, 101], [1, 1, 0, 5], [0]), SP.RecordZero{}) &&
-  bytes_refused(raw_record([2, 1, 101], [1, 1, 101, 5], [0]), SP.RecordLength{}) &&
-  Bool.not(bytes_refused(raw_record([1, 1, 101], [1, 1, 101, 5], [0]), SP.RecordLength{}))
+  bytes_refused(raw_programs([2, 1, 101], [1, 1, 101, 5], [0], []), SP.RecordLength{}) &&
+  Bool.not(bytes_refused(raw_record([1, 1, 101], [1, 1, 101, 5], [0]), SP.RecordLength{})) &&
+  program_words_faults()
 
 def with_roles(roles: C.RoleMap) -> SP.Record:
-  SP.Record{TF.stamp(), roles, IT.directory(), IT.placements()}
+  SP.Record{TF.stamp(), roles, IT.directory(), IT.placements(), programs()}
+
+def with_programs(given: SR.Programs) -> SP.Record:
+  SP.Record{TF.stamp(), OT.roles(), IT.directory(), IT.placements(), given}
+
+def one(+index: Nat, rest: SR.Programs) -> SR.Programs:
+  SR.Program{index, abc_digest(), rest}
+
+# Each role exactly one program, and none for anything else.
+def program_consistency() -> Bool:
+  record_refused(with_programs(SR.NoPrograms{}), SP.ProgramsInvalid{}) &&
+  record_refused(with_programs(one(1n, SR.NoPrograms{})), SP.ProgramsInvalid{}) &&
+  record_refused(with_programs(one(1n, one(1n, SR.NoPrograms{}))), SP.ProgramsInvalid{}) &&
+  record_refused(with_programs(one(1n, one(2n, one(3n, SR.NoPrograms{})))), SP.ProgramsInvalid{}) &&
+  record_refused(with_programs(one(1n, one(2n, one(2n, SR.NoPrograms{})))), SP.ProgramsInvalid{}) &&
+  record_refused(with_programs(one(1n, one(3n, SR.NoPrograms{}))), SP.ProgramsInvalid{})
 
 def consistency() -> Bool:
   record_refused(with_roles(C.Role{1n, Iss.Principal{101n}, C.Role{1n, Iss.Principal{102n}, C.NoRoles{}}}), SP.RolesInvalid{}) &&
@@ -179,18 +233,20 @@ def consistency() -> Bool:
   record_refused(with_roles(C.NoRoles{}), SP.RolesEmpty{}) &&
   record_refused(with_roles(C.Role{1n, Iss.Principal{101n}, C.Role{2n, Iss.Principal{999n}, C.NoRoles{}}}), SP.RoleWithoutAuthority{}) &&
   record_refused(SP.Record{TF.stamp(), OT.roles(), IT.directory(),
-    Iss.Placements{Iss.SourceAt{TF.source_object(), IT.read9()}, IT.placements()}}, SP.PlacementsInvalid{}) &&
+    Iss.Placements{Iss.SourceAt{TF.source_object(), IT.read9()}, IT.placements()}, programs()}, SP.PlacementsInvalid{}) &&
+  program_consistency() &&
   installed_canary(SP.install(protected(), SP.encode(with_roles(OT.roles()))))
 
 def adopted_roles(adoption: SP.Adoption) -> Bool:
   match adoption:
-    case SP.Adopted{O.Owner{+roles, _}}: names(roles, 1n, 101n) && names(roles, 2n, 102n)
+    case SP.Adopted{O.Owner{+roles, _}, +adopted_programs}:
+      names(roles, 1n, 101n) && names(roles, 2n, 102n) && pins(adopted_programs, 2n, empty_digest())
     case SP.NotAdopted{_}: False{}
 
 def not_adopted(adoption: SP.Adoption, expected: SP.ProvisionError) -> Bool:
   match adoption:
     case SP.NotAdopted{reason}: error_equal(reason, expected)
-    case SP.Adopted{_}: False{}
+    case SP.Adopted{_, _}: False{}
 
 def install_record(record: SP.Record) -> SP.Installed:
   SP.install(protected(), SP.encode(record))
@@ -199,11 +255,11 @@ def adoption(+s: JO.Stages) -> Bool:
   +running = JO.stage_running(s)
   adopted_roles(SP.adopt(running, install_record(canary()))) &&
   not_adopted(SP.adopt(running, install_record(SP.Record{TF.stamp(), C.Role{1n, Iss.Principal{102n}, C.NoRoles{}},
-    IT.directory_without_source(), IT.placements()})), SP.IssuerMismatch{}) &&
-  not_adopted(SP.adopt(running, install_record(SP.Record{T.Stamp{1n, 2n, 4n}, OT.roles(), IT.directory(), IT.placements()})),
+    IT.directory_without_source(), IT.placements(), one(1n, SR.NoPrograms{})})), SP.IssuerMismatch{}) &&
+  not_adopted(SP.adopt(running, install_record(SP.Record{T.Stamp{1n, 2n, 4n}, OT.roles(), IT.directory(), IT.placements(), programs()})),
     SP.IssuerMismatch{}) &&
   not_adopted(SP.adopt(running, install_record(SP.Record{TF.stamp(), OT.roles(), IT.directory(),
-    Iss.Placements{Iss.SourceAt{TF.source_object(), IT.read5()}, Iss.NoPlacements{}}})), SP.IssuerMismatch{}) &&
+    Iss.Placements{Iss.SourceAt{TF.source_object(), IT.read5()}, Iss.NoPlacements{}}, programs()})), SP.IssuerMismatch{}) &&
   not_adopted(SP.adopt(LH.initial(), install_record(canary())), SP.NoIssuer{}) &&
   not_adopted(SP.adopt(running, SP.install(facts(33152, 2, 1000), SP.encode(canary()))), SP.ConfigLinked{})
 
@@ -250,11 +306,11 @@ def wire_refusals(+s: JO.Stages) -> Bool:
 
 def provision_checks(+s: JO.Stages) -> IO(Unit):
   do IO<Unit>:
-    Test.check(canary_installs(), "SupervisorProvision canary record installs its role map over the canary issuer root")
+    Test.check(canary_installs(), "SupervisorProvision canary record installs its role map and program digests over the canary issuer root")
     Test.check(config_faults(), "SupervisorProvision refuses unprotected configuration facts before decoding")
     Test.check(byte_faults(), "SupervisorProvision refuses oversized, out-of-range, misaligned and short records")
     Test.check(word_faults(), "SupervisorProvision refuses unknown kinds, zero principals and short sections")
-    Test.check(consistency(), "SupervisorProvision refuses invalid, empty or unbacked role maps and ambiguous placements")
+    Test.check(consistency(), "SupervisorProvision refuses invalid, empty or unbacked role maps, ambiguous placements and unpinned role programs")
     Test.check(adoption(s), "SupervisorProvision adopts only a record whose root is the retained issuer's root")
     Test.check(provisioned_flow(s), "SupervisorWire provisions first, then attributes revokes through the installed map")
     Test.check(wire_refusals(s), "SupervisorWire refuses unprovisioned frames, refused records and reprovisioning")

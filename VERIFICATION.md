@@ -1239,6 +1239,20 @@ and the existing-law proof passed with `--verdict`. The program a role runs is
 still the caller's argument, the operator is not authenticated, an exited
 role cannot be relaunched, and no host is qualified.
 
+The [supervisor role program record](verification/linux-supervisor-role-programs/README.md)
+pins each role's program in the protected record. Record version 2 carries a
+SHA-256 per role (exactly one per role). The driver resolves the named program
+without following symlinks, copies it into a sealed memory file, hashes it and
+sends the file's facts and digest in `ROLE`; Bend (`SupervisorRoleLaunch.bend`)
+admits only a protected file whose digest is the role's pin, and the driver
+executes exactly the sealed copy. 12 role and 8 provisioning Bend checks and 60
+native cases pass; 15 of 16 Bend and 9 of 10 C mutants fail, and the two
+survivors are equivalent and reviewed only. The suite output differs from
+`b3bb2245` only by the new and renamed checks, the native CPU run is
+identical, the full suite passes under QuickJS with the Genode stack, and the
+existing-law proof passed with `--verdict`. The record's writer is trusted,
+not authenticated; shared libraries are not pinned; and no host is qualified.
+
 The [linear stored-approval lookup record](verification/issuance-linear-lookup/README.md)
 replaces a quadratic duplicate scan in `Issuance.find_stored` with one pass
 that returns the same answer for every list. Six direct lookup checks and two

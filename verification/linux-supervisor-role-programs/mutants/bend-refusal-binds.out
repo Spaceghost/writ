@@ -1,0 +1,5 @@
+PASS: SupervisorRoleLaunch admits each provisioned role's pinned program once
+PASS: SupervisorRoleLaunch refuses zero, unmapped and invalid-map indices
+PASS: SupervisorRoleLaunch refuses a second launch for a bound index
+PASS: SupervisorRoleLaunch refuses an unprotected program file
+FAIL: SupervisorRoleLaunch refuses a program whose digest is not the role's pin

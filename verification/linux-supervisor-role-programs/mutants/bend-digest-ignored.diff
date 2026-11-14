@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorRoleLaunch.bend
++++ b/hosts/linux/monitor/SupervisorRoleLaunch.bend
+@@ -146,7 +146,7 @@
+   match safe launches:
+     case False{} _: RoleRefused{ProgramUnprotected{}}
+     case True{} Launches{+programs, +bound}:
+-      admit_program(matches(pinned(programs, index), digest_of(facts)), Launches{programs, bound}, index)
++      admit_program(True{}, Launches{programs, bound}, index)
+ 
+ def admit_fresh(again: Bool, +launches: Launches, +facts: ProgramFacts, +index: Nat) -> Admission:
+   match again:

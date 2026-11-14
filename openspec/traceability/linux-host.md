@@ -215,7 +215,7 @@ and owned-process boundary only:
 
 - Bend checks in [SupervisorProvisionTests.bend](../../hosts/linux/monitor/SupervisorProvisionTests.bend):
   `SupervisorProvision refuses unprotected configuration facts before decoding`,
-  `SupervisorProvision refuses invalid, empty or unbacked role maps and ambiguous placements`,
+  `SupervisorProvision refuses invalid, empty or unbacked role maps, ambiguous placements and unpinned role programs`,
   `SupervisorProvision adopts only a record whose root is the retained issuer's root`
   and `SupervisorWire refuses unprovisioned frames, refused records and reprovisioning`.
 - Native cases: `protected_record_provisioned`, `group_writable_record_refused`,
@@ -269,22 +269,34 @@ Bend admits each provisioned role index once (`SupervisorRoleLaunch.bend`),
 the driver starts a process only after `ROLE_ADMITTED`, and the receiver
 attributes through the driver's own table of those processes. For LH-011 this
 binds each role index to one exact process lifetime the supervisor started.
-It does not bind a trusted program (the program is the caller's argument),
-authenticate the administrator, or bind a worker session, so LH-011 stays a
+The [role program record](../../verification/linux-supervisor-role-programs/README.md)
+then binds each role to the program the protected record pins: Bend admits a
+launch only for a protected file whose SHA-256 is that role's pin, and the
+driver executes exactly the sealed copy it hashed. Neither authenticates the
+administrator who wrote the record or binds a worker session, so LH-011 stays a
 reviewed-only gap. The checks are:
 
 - Bend checks in [SupervisorRoleLaunchTests.bend](../../hosts/linux/monitor/SupervisorRoleLaunchTests.bend):
-  `SupervisorRoleLaunch admits each provisioned role index once`,
   `SupervisorRoleLaunch refuses zero, unmapped and invalid-map indices`,
   `SupervisorRoleLaunch refuses a second launch for a bound index`,
   `SupervisorWire ROLE replies exactly without containment`,
-  `SupervisorWire a contained owner still admits a role launch for cleanup`,
-  `SupervisorWire ROLE before provisioning or with extra fields stops` and
-  `SupervisorWire ROLE uses the role map installed by PROVISION`.
+  `SupervisorWire a contained owner still admits a role launch for cleanup` and
+  `SupervisorWire ROLE before provisioning or with extra fields stops`.
 - Native cases: `launched_roles_clean`, `role_launch_refused`,
   `role_launch_bad_descriptor`, `test_spawned_sender_denied`,
   `peer_role_wrong_outcome`, `peer_role_effect`, `peer_role_contains` and
   `role_exec_failure_fail_stop`.
+- Program pinning, Bend: `SupervisorRoleLaunch admits each provisioned role's pinned program once`,
+  `SupervisorRoleLaunch refuses an unprotected program file`,
+  `SupervisorRoleLaunch refuses a program whose digest is not the role's pin`,
+  `SupervisorRoleLaunch refusals bind nothing`,
+  `SupervisorWire launches nothing without provisioned programs`,
+  `SupervisorWire ROLE with a program argument of the wrong size stops`,
+  `SupervisorWire ROLE uses the role map and programs installed by PROVISION` and
+  `SupervisorProvision refuses invalid, empty or unbacked role maps, ambiguous placements and unpinned role programs`;
+  native: `sha256_vectors`, `frame_role_exact`, `role_program_refused`,
+  `role_program_not_resolved`, `role_pinned_program_admitted` and
+  `role_unregular_admitted_fail_stop`.
 
 ## Synthetic Rendezvous owner (LH-012, LH-013, LH-015 and LH-016)
 

@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -337,7 +337,7 @@
+ def each_role_once(roles: C.RoleMap, +programs: SR.Programs) -> Bool:
+   match roles:
+     case C.NoRoles{}: True{}
+-    case C.Role{index, _, rest}: Nat.is_eq(SR.program_count(programs, index), 1n) && each_role_once(rest, programs)
++    case C.Role{index, _, rest}: Bool.not(Nat.is_eq(SR.program_count(programs, index), 0n)) && each_role_once(rest, programs)
+ 
+ # Every role has exactly one program and no program names anything else:
+ # with one entry per role, equal totals leave no room for a stray entry.

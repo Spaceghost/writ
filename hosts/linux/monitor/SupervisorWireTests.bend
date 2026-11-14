@@ -106,9 +106,9 @@ def frames_share_owner(+s: JO.Stages) -> Bool:
 
 def bounded_and_stopped(+s: JO.Stages) -> Bool:
   +owner = OT.owner_of(JO.stage_running(s))
-  String.eq(SW.reply(SW.dispatch(SW.State{owner, OT.authority(), 100000, False{}, True{}, SR.NoBound{}}, drain())),
+  String.eq(SW.reply(SW.dispatch(SW.State{owner, OT.authority(), 100000, False{}, True{}, SR.none()}, drain())),
     line("100001", "EXHAUSTED", "1", "-")) &&
-  String.eq(SW.reply(SW.dispatch(SW.State{owner, OT.authority(), 5, True{}, True{}, SR.NoBound{}}, from_role("1", "113", revoke5()))),
+  String.eq(SW.reply(SW.dispatch(SW.State{owner, OT.authority(), 5, True{}, True{}, SR.none()}, from_role("1", "113", revoke5()))),
     line("6", "STOPPED", "1", "-"))
 
 def effects_render() -> Bool:

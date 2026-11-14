@@ -1,0 +1,26 @@
+diff <bend Tests.bend at b3bb2245> <bend Tests.bend with this change>
+2167c2167
+< PASS: SupervisorProvision canary record installs its role map over the canary issuer root
+---
+> PASS: SupervisorProvision canary record installs its role map and program digests over the canary issuer root
+2171c2171
+< PASS: SupervisorProvision refuses invalid, empty or unbacked role maps and ambiguous placements
+---
+> PASS: SupervisorProvision refuses invalid, empty or unbacked role maps, ambiguous placements and unpinned role programs
+2188c2188
+< PASS: SupervisorRoleLaunch admits each provisioned role index once
+---
+> PASS: SupervisorRoleLaunch admits each provisioned role's pinned program once
+2190a2191,2193
+> PASS: SupervisorRoleLaunch refuses an unprotected program file
+> PASS: SupervisorRoleLaunch refuses a program whose digest is not the role's pin
+> PASS: SupervisorRoleLaunch refusals bind nothing
+2192a2196
+> PASS: SupervisorWire launches nothing without provisioned programs
+2194,2195c2198,2200
+< PASS: SupervisorWire ROLE uses the role map installed by PROVISION
+< SupervisorRoleLaunch: 7 checks passed
+---
+> PASS: SupervisorWire ROLE with a program argument of the wrong size stops
+> PASS: SupervisorWire ROLE uses the role map and programs installed by PROVISION
+> SupervisorRoleLaunch: 12 checks passed

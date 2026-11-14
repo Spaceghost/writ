@@ -32,7 +32,9 @@ authority: the canary root is public, so anyone can build a matching record,
 and the file facts are the only gate. File ownership and mode are local facts.
 They do not authenticate the operator who wrote the record, and any process
 running as the supervisor's user can rewrite it. Which process holds which
-role index was then still registered by the caller (`writ_roles_add`); the
+role index was then still registered by the caller (`writ_roles_add`). The
+record described here is version 1; version 2 adds program pins (see the
+[role program record](../linux-supervisor-role-programs/README.md)). The
 driver now launches role processes itself, see the
 [role launch record](../linux-supervisor-roles/README.md). Clock samples
 are still scripted.

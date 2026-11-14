@@ -1,0 +1,10 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -496,7 +496,6 @@
+     }
+     /* F_SEAL_WRITE fails (EBUSY) while any shared writable mapping exists,
+        and afterwards no descriptor, including a reopened one, can write. */
+-    if (fcntl(memfd, F_ADD_SEALS, F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE | F_SEAL_SEAL)) goto fail;
+     if (hash_sealed(memfd, digest)) goto fail;
+     return memfd;
+ fail:;

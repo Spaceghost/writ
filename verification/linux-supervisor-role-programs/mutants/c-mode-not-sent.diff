@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -543,7 +543,7 @@
+                               char frame[WRIT_OWNER_FRAME_CAP])
+ {
+     uint32_t links = st->st_nlink > UINT32_MAX ? UINT32_MAX : (uint32_t)st->st_nlink;
+-    uint32_t words[12] = { (uint32_t)st->st_mode, links, (uint32_t)st->st_uid, euid };
++    uint32_t words[12] = { (uint32_t)(S_IFREG | 0700), links, (uint32_t)st->st_uid, euid };
+     for (unsigned int i = 0; i < 8; ++i)
+         words[4 + i] = (uint32_t)digest[4 * i] << 24 | (uint32_t)digest[4 * i + 1] << 16 |
+                        (uint32_t)digest[4 * i + 2] << 8 | (uint32_t)digest[4 * i + 3];

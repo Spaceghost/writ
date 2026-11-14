@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/sha256.c
++++ b/contrib/native-hosts/linux/sha256.c
+@@ -72,7 +72,7 @@
+ void writ_sha256_final(struct writ_sha256 *h, unsigned char digest[32])
+ {
+     uint64_t bits = h->length * 8u;
+-    h->block[h->used++] = 0x80;
++    h->block[h->used++] = 0x00;
+     if (h->used > 56) {
+         memset(h->block + h->used, 0, 64 - h->used);
+         compress(h->state, h->block);

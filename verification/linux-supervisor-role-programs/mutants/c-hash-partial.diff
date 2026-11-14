@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -462,7 +462,7 @@
+         if (got < 0 && errno == EINTR) continue;
+         if (got < 0) return -1;
+         if (got == 0) break;
+-        writ_sha256_update(&h, buffer, (size_t)got);
++        writ_sha256_update(&h, buffer, (size_t)got / 2);
+         at += got;
+     }
+     writ_sha256_final(&h, digest);

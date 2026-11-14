@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -156,7 +156,7 @@
+            successful execve. */
+         if (syscall(SYS_close_range, 4u, ~0u, CLOSE_RANGE_CLOEXEC)) child_failed(status);
+         /* Exactly the sealed bytes Bend admitted, never a path. */
+-        syscall(SYS_execveat, program, "", argv, envp, AT_EMPTY_PATH);
++        syscall(SYS_execveat, AT_FDCWD, "/proc/self/exe", argv, envp, 0);
+         child_failed(status);
+     }
+     if (syscall(SYS_close_range, 3u, ~0u, 0u)) _exit(127);

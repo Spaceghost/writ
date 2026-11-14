@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorRoleLaunch.bend
++++ b/hosts/linux/monitor/SupervisorRoleLaunch.bend
+@@ -151,7 +151,7 @@
+ def admit_fresh(again: Bool, +launches: Launches, +facts: ProgramFacts, +index: Nat) -> Admission:
+   match again:
+     case True{}: RoleRefused{RoleAlreadyBound{}}
+-    case False{}: admit_facts(protected(facts), launches, facts, index)
++    case False{}: admit_facts(True{}, launches, facts, index)
+ 
+ def bound_of(launches: Launches) -> Bound:
+   match launches:

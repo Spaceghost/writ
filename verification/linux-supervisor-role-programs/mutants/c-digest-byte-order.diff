@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -545,7 +545,7 @@
+     uint32_t links = st->st_nlink > UINT32_MAX ? UINT32_MAX : (uint32_t)st->st_nlink;
+     uint32_t words[12] = { (uint32_t)st->st_mode, links, (uint32_t)st->st_uid, euid };
+     for (unsigned int i = 0; i < 8; ++i)
+-        words[4 + i] = (uint32_t)digest[4 * i] << 24 | (uint32_t)digest[4 * i + 1] << 16 |
++        words[4 + i] = (uint32_t)digest[4 * i + 1] << 24 | (uint32_t)digest[4 * i] << 16 |
+                        (uint32_t)digest[4 * i + 2] << 8 | (uint32_t)digest[4 * i + 3];
+     unsigned char bytes[48];
+     for (unsigned int i = 0; i < 12; ++i)

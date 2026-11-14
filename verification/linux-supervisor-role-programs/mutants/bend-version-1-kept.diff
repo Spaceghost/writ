@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -100,7 +100,7 @@
+   NotAdopted{reason: ProvisionError}
+ 
+ def record_version() -> U32:
+-  2
++  1
+ 
+ def max_record_bytes() -> Nat:
+   4096n

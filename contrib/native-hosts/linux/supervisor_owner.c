@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "supervisor_owner.h"
+#include "sha256.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -9,6 +10,7 @@
 #include <poll.h>
 #include <signal.h>
 #include <stdio.h>
+#include <sys/mman.h>
 #include <sys/prctl.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -112,8 +114,9 @@ int writ_supervisor_add_worker(struct writ_supervisor *s, uint32_t worker, int p
    as descriptor 3, keeps 1 and 2, and nothing else. Both are first copied
    above 3 so that neither dup2 overwrites the other's source. `status` is
    the write end of a close-on-exec pipe: a role child that fails before
-   execve writes its errno there, and a successful execve closes it. */
-struct child_fds { int input, channel, status; };
+   execve writes its errno there, and a successful execve closes it.
+   `program` is the sealed memory file the role child executes. */
+struct child_fds { int input, channel, status, program; };
 
 static _Noreturn void child_failed(int status)
 {
@@ -129,7 +132,9 @@ static _Noreturn void exec_child(pid_t parent, const char *path, char *const arg
                                  const struct child_fds *fds)
 {
     int status = -1;
+    int program = -1;
     if (fds && (status = fcntl(fds->status, F_DUPFD_CLOEXEC, 4)) < 0) child_failed(fds->status);
+    if (fds && (program = fcntl(fds->program, F_DUPFD_CLOEXEC, 4)) < 0) child_failed(status);
     struct sigaction dfl;
     memset(&dfl, 0, sizeof dfl);
     dfl.sa_handler = SIG_DFL;
@@ -150,11 +155,13 @@ static _Noreturn void exec_child(pid_t parent, const char *path, char *const arg
            close-on-exec (rather than closing) keeps `status` open until a
            successful execve. */
         if (syscall(SYS_close_range, 4u, ~0u, CLOSE_RANGE_CLOEXEC)) child_failed(status);
-    } else if (syscall(SYS_close_range, 3u, ~0u, 0u)) {
-        _exit(127);
+        /* Exactly the sealed bytes Bend admitted, never a path. */
+        syscall(SYS_execveat, program, "", argv, envp, AT_EMPTY_PATH);
+        child_failed(status);
     }
+    if (syscall(SYS_close_range, 3u, ~0u, 0u)) _exit(127);
     execve(path, argv, envp);
-    child_failed(status);
+    _exit(127);
 }
 
 /* clone3 with every signal blocked in the caller across it; returns the
@@ -438,32 +445,158 @@ int writ_supervisor_control(struct writ_supervisor *s, const struct writ_channel
     return 0;
 }
 
+#ifndef MFD_EXEC
+#define MFD_EXEC 0x0010u
+#endif
+
+/* Hashes the sealed memory file `memfd` from its start. Reading back after
+   sealing means the digest is of the bytes that can no longer change, not of
+   a buffer that a writer of the memory file could have overtaken. */
+static int hash_sealed(int memfd, unsigned char digest[32])
+{
+    unsigned char buffer[65536];
+    struct writ_sha256 h;
+    writ_sha256_init(&h);
+    for (off_t at = 0;;) {
+        ssize_t got = pread(memfd, buffer, sizeof buffer, at);
+        if (got < 0 && errno == EINTR) continue;
+        if (got < 0) return -1;
+        if (got == 0) break;
+        writ_sha256_update(&h, buffer, (size_t)got);
+        at += got;
+    }
+    writ_sha256_final(&h, digest);
+    return 0;
+}
+
+/* Copies the open regular file `fd` into a new memory file, seals it
+   against writes, shrinking and growth, then hashes the sealed bytes.
+   Returns the memory file, or -1 with errno (EFBIG beyond
+   WRIT_OWNER_PROGRAM_MAX; EACCES from memfd_create when vm.memfd_noexec
+   forbids executable memory files). */
+static int seal_program(int fd, unsigned char digest[32])
+{
+    int memfd = (int)syscall(SYS_memfd_create, "writ-role", MFD_CLOEXEC | MFD_ALLOW_SEALING | MFD_EXEC);
+    if (memfd < 0) return -1;
+    unsigned char buffer[65536];
+    size_t total = 0;
+    for (;;) {
+        ssize_t got = read(fd, buffer, sizeof buffer);
+        if (got < 0 && errno == EINTR) continue;
+        if (got < 0) goto fail;
+        if (got == 0) break;
+        total += (size_t)got;
+        if (total > WRIT_OWNER_PROGRAM_MAX) { errno = EFBIG; goto fail; }
+        for (ssize_t done = 0; done < got;) {
+            ssize_t put = write(memfd, buffer + done, (size_t)(got - done));
+            if (put < 0 && errno == EINTR) continue;
+            if (put <= 0) goto fail;
+            done += put;
+        }
+    }
+    /* F_SEAL_WRITE fails (EBUSY) while any shared writable mapping exists,
+       and afterwards no descriptor, including a reopened one, can write. */
+    if (fcntl(memfd, F_ADD_SEALS, F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE | F_SEAL_SEAL)) goto fail;
+    if (hash_sealed(memfd, digest)) goto fail;
+    return memfd;
+fail:;
+    int saved = errno;
+    close(memfd);
+    errno = saved;
+    return -1;
+}
+
+/* Resolves `name` beneath `dirfd` as writ_supervisor_provision does (O_PATH,
+   no symlink, no magic link, no escape), takes its fstat, and only for a
+   regular file reopens it to copy it into a sealed memory file. `*program`
+   is that file or -1 (not regular: nothing to execute, digest all zero). */
+static int open_program(int dirfd, const char *name, struct stat *st, int *program, unsigned char digest[32])
+{
+    struct open_how how;
+    memset(&how, 0, sizeof how);
+    how.flags = O_PATH | O_CLOEXEC;
+    how.resolve = RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS | RESOLVE_BENEATH;
+    memset(digest, 0, 32);
+    *program = -1;
+    int path = (int)syscall(SYS_openat2, dirfd, name, &how, sizeof how);
+    if (path < 0) return -1;
+    int bad = fstat(path, st);
+    if (!bad && S_ISREG(st->st_mode)) {
+        char self[64];
+        snprintf(self, sizeof self, "/proc/self/fd/%d", path);
+        int fd = open(self, O_RDONLY | O_CLOEXEC | O_NONBLOCK | O_NOCTTY);
+        bad = fd < 0 || (*program = seal_program(fd, digest)) < 0;
+        int saved = errno;
+        if (fd >= 0) close(fd);
+        errno = saved;
+    }
+    int saved = errno;
+    close(path);
+    errno = saved;
+    return bad ? -1 : 0;
+}
+
+#ifndef WRIT_OWNER_TESTING
+static
+#endif
+size_t writ_owner_format_role(uint32_t index, const struct stat *st, uint32_t euid, const unsigned char digest[32],
+                              char frame[WRIT_OWNER_FRAME_CAP])
+{
+    uint32_t links = st->st_nlink > UINT32_MAX ? UINT32_MAX : (uint32_t)st->st_nlink;
+    uint32_t words[12] = { (uint32_t)st->st_mode, links, (uint32_t)st->st_uid, euid };
+    for (unsigned int i = 0; i < 8; ++i)
+        words[4 + i] = (uint32_t)digest[4 * i] << 24 | (uint32_t)digest[4 * i + 1] << 16 |
+                       (uint32_t)digest[4 * i + 2] << 8 | (uint32_t)digest[4 * i + 3];
+    unsigned char bytes[48];
+    for (unsigned int i = 0; i < 12; ++i)
+        for (unsigned int b = 0; b < 4; ++b) bytes[4 * i + b] = (unsigned char)(words[i] >> (8 * b));
+    int used = snprintf(frame, WRIT_OWNER_FRAME_CAP, "LINUXSUP1\tROLE\t%" PRIu32 "\t0\t0\t0\t", index);
+    if (used <= 0 || (size_t)used + 2 * sizeof bytes + 1 > WRIT_OWNER_FRAME_CAP) return 0;
+    return append_hex(frame, (size_t)used, bytes, sizeof bytes);
+}
+
 int writ_supervisor_launch_role(struct writ_supervisor *s, uint32_t index, int channel, int input,
-                                const char *path, char *const argv[], char *const envp[], pid_t *pid,
-                                struct writ_owner_reply *reply)
+                                int dirfd, const char *name, char *const argv[], char *const envp[],
+                                pid_t *pid, struct writ_owner_reply *reply)
 {
     if (!s->provisioned || s->failed) { errno = EPERM; return -1; }
     if (channel < 0 || input < 0) { errno = EBADF; return -1; }
     if (s->role_pidfds == WRIT_CHANNEL_ROLES) { errno = ENOSPC; return -1; }
-    char frame[64];
-    int used = snprintf(frame, sizeof frame, "LINUXSUP1\tROLE\t%" PRIu32 "\t0\t0\t0\t-\n", index);
-    if (used <= 0 || (size_t)used >= sizeof frame) return fail_stop(s);
-    if (call(s, frame, (size_t)used, reply, role_outcome)) return -1;
+    struct stat st;
+    unsigned char digest[32];
+    int program;
+    /* Nothing sent yet: an unopenable program changes no state. */
+    if (open_program(dirfd, name, &st, &program, digest)) return -1;
+    char frame[WRIT_OWNER_FRAME_CAP];
+    size_t used = writ_owner_format_role(index, &st, (uint32_t)geteuid(), digest, frame);
+    int refused = 0;
+    if (!used || call(s, frame, used, reply, role_outcome)) {
+        if (program >= 0) close(program);
+        return used ? -1 : fail_stop(s);
+    }
     /* ROLE never requires containment and never carries an effect. */
-    if (reply->stops || reply->contain) return fail_stop(s);
-    if (reply->outcome == WRIT_OWNER_ROLE_REFUSED) { errno = EPERM; return -1; }
+    if (reply->stops || reply->contain) refused = -1;
+    else if (reply->outcome == WRIT_OWNER_ROLE_REFUSED) refused = 1;
+    else if (program < 0) refused = -1; /* admitted with nothing to execute */
+    if (refused) {
+        if (program >= 0) close(program);
+        if (refused < 0) return fail_stop(s);
+        errno = EPERM;
+        return -1;
+    }
     /* Admitted: from here a failure to start the program or to register it
        leaves Bend believing the index bound, so it is fail-stop. */
     int status[2];
-    if (pipe2(status, O_CLOEXEC)) return fail_stop(s);
-    struct child_fds fds = { input, channel, status[1] };
+    if (pipe2(status, O_CLOEXEC)) { close(program); return fail_stop(s); }
+    struct child_fds fds = { input, channel, status[1], program };
     int pidfd;
-    long child = spawn_child(path, argv, envp, &fds, &pidfd);
+    long child = spawn_child(NULL, argv, envp, &fds, &pidfd);
     int saved = errno;
     close(status[1]);
+    close(program);
     if (child < 0) { close(status[0]); errno = saved; return fail_stop(s); }
-    /* End of file: execve succeeded. An errno: the child failed before or in
-       execve and has exited. */
+    /* End of file: execveat succeeded. An errno: the child failed before or
+       in execveat and has exited. */
     int error = 0;
     ssize_t got;
     do got = read(status[0], &error, sizeof error); while (got < 0 && errno == EINTR);

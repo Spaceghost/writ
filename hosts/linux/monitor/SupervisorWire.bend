@@ -40,12 +40,16 @@ import ../../../contrib/rclone/bend/Wire.bend as Wire
 #   FRAME   0 0 <clock> <now> <payload hex>                one monitor frame
 #   DRAIN   0 0 0 0 -                                      supervisor cleanup
 #   PROVISION <mode> <links> <owner> <euid> <record hex>   protected bootstrap
-#   ROLE    <index> 0 0 0 -                                may a role process start
+#   ROLE    <index> 0 0 0 <program hex>                    may this role program start
 # For PROVISION the four numeric fields are the configuration file's
 # `st_mode`, `st_nlink`, `st_uid` and the supervisor's effective user ID.
-# ROLE replies `ROLE_ADMITTED` when the provisioned role map names `index` and
-# no process was admitted for it before (`SupervisorRoleLaunch`), and
-# `ROLE_REFUSED` otherwise; neither requires containment or stops the
+# ROLE's argument is twelve little-endian words: the program file's
+# `st_mode`, `st_nlink`, `st_uid`, the supervisor's effective user ID and the
+# eight digest words of the sealed copy the driver will execute. It replies
+# `ROLE_ADMITTED` when the provisioned role map names `index`, no process was
+# admitted for it before, the file is protected and the digest is the one the
+# record pins (`SupervisorRoleLaunch`), and `ROLE_REFUSED` otherwise; an
+# argument of any other shape is `ERROR`; neither requires containment or stops the
 # interpreter, and neither takes a clock sample. The driver launches a role
 # process only after `ROLE_ADMITTED`.
 # Payload hex is lowercase, at most `max_payload()` bytes (the receiver's
@@ -69,7 +73,7 @@ import ../../../contrib/rclone/bend/Wire.bend as Wire
 
 type State is Data:
   State{owner: O.Owner, authority: P.AdmissionAuthority, sequence: U32, stopped: Bool, ready: Bool,
-    bound: SR.Bound}
+    launches: SR.Launches}
 
 type Request is Data:
   Request{operation: String, verdict: U32, role: U32, clock: U32, now: U32, argument: String}
@@ -86,12 +90,17 @@ def max_requests() -> U32:
 # Exported for tests: the interpreter state for an owner whose role map is
 # already in place. Constructing it is not authentication.
 def provisioned(owner: O.Owner, authority: P.AdmissionAuthority) -> State:
-  State{owner, authority, 0, False{}, True{}, SR.NoBound{}}
+  State{owner, authority, 0, False{}, True{}, SR.none()}
+
+# Exported for tests: a provisioned interpreter that can admit role launches
+# for `programs`, as PROVISION would install them.
+def provisioned_with(owner: O.Owner, authority: P.AdmissionAuthority, programs: SR.Programs) -> State:
+  State{owner, authority, 0, False{}, True{}, SR.provisioned(programs)}
 
 # Public entry point for a provisioning module: an interpreter over `state`
 # with no role map, which accepts only `PROVISION` first.
 def unprovisioned(state: LH.State, authority: P.AdmissionAuthority) -> State:
-  State{O.Owner{C.NoRoles{}, state}, authority, 0, False{}, False{}, SR.NoBound{}}
+  State{O.Owner{C.NoRoles{}, state}, authority, 0, False{}, False{}, SR.none()}
 
 def next(step: Step) -> State:
   match step:
@@ -316,8 +325,8 @@ def frame(+state: State, clock: U32, now: U32, argument: String) -> Step:
 
 def adopted(+state: State, adoption: SP.Adoption) -> Step:
   match state adoption:
-    case State{_, authority, sequence, stopped, _, bound} SP.Adopted{owner}:
-      Step{State{owner, authority, sequence, stopped, True{}, bound}, "PROVISIONED", False{}, "-"}
+    case State{_, authority, sequence, stopped, _, _} SP.Adopted{owner, programs}:
+      Step{State{owner, authority, sequence, stopped, True{}, SR.provisioned(programs)}, "PROVISIONED", False{}, "-"}
     case _ SP.NotAdopted{_}:
       failed(state, "PROVISION_REFUSED")
 
@@ -334,18 +343,36 @@ def provision(+state: State, mode: U32, links: U32, owner: U32, euid: U32, argum
 
 def role_admitted(+state: State, admission: SR.Admission) -> Step:
   match state admission:
-    case State{owner, authority, sequence, stopped, ready, _} SR.RoleAdmitted{bound}:
-      Step{State{owner, authority, sequence, stopped, ready, bound}, "ROLE_ADMITTED", False{}, "-"}
+    case State{owner, authority, sequence, stopped, ready, _} SR.RoleAdmitted{launches}:
+      Step{State{owner, authority, sequence, stopped, ready, launches}, "ROLE_ADMITTED", False{}, "-"}
     case _ SR.RoleRefused{_}:
       Step{state, "ROLE_REFUSED", False{}, "-"}
 
-def bound_of(+state: State) -> SR.Bound:
+def launches_of(+state: State) -> SR.Launches:
   match state:
-    case State{_, _, _, _, _, bound}: bound
+    case State{_, _, _, _, _, launches}: launches
 
-# Whether the driver may launch a process for role `index` (SupervisorRoleLaunch).
-def role(+state: State, +index: U32) -> Step:
-  role_admitted(state, SR.admit(O.Owner.roles(owner_of(state)), bound_of(state), U32.to_nat(index)))
+def role_facts(+state: State, +index: U32, facts: Maybe<&2, SR.ProgramFacts>) -> Step:
+  match facts:
+    case Some{+found}:
+      role_admitted(state, SR.admit(O.Owner.roles(owner_of(state)), launches_of(state), found, U32.to_nat(index)))
+    case None{}:
+      failed(state, "ERROR")
+
+def role_packed(+state: State, +index: U32, packed: LH.Packed) -> Step:
+  match packed:
+    case LH.Packed{words}: role_facts(state, index, SR.facts_of_words(words))
+    case LH.Unpacked{_}: failed(state, "ERROR")
+
+def role_read(+state: State, +index: U32, bytes: Maybe<&2, +List<U32>>) -> Step:
+  match bytes:
+    case Some{+found}: role_packed(state, index, LH.pack(found))
+    case None{}: failed(state, "ERROR")
+
+# Whether the driver may start the program it described for role `index`
+# (SupervisorRoleLaunch).
+def role(+state: State, +index: U32, argument: String) -> Step:
+  role_read(state, index, payload(argument))
 
 # Before provisioning only PROVISION is accepted.
 def first(+state: State, request: Request) -> Step:
@@ -364,8 +391,8 @@ def command(+state: State, request: Request) -> Step:
       frame(state, clock, now, argument)
     case Request{"DRAIN", 0, 0, 0, 0, "-"}:
       apply(state, O.Drain{}, LH.UnavailableClock{})
-    case Request{"ROLE", index, 0, 0, 0, "-"}:
-      role(state, index)
+    case Request{"ROLE", index, 0, 0, 0, argument}:
+      role(state, index, argument)
     case _:
       failed(state, "ERROR")
 

@@ -1,0 +1,3 @@
+bend PROOF.bend --verdict (Lean-built BendTT, kernel sha256 e365eba17416…)
+ALL PROOFS CHECK
+exit 0
