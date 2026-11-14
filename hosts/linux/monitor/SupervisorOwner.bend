@@ -173,9 +173,15 @@ def control_bounded(within: Bool, +bytes: +List<U32>) -> ControlRead:
     case True{}:
       control_in_range(LH.all_bytes(bytes), bytes)
 
+# Exported for tests: decode under an explicit byte bound. The suite checks
+# the bound at a small maximum, because a payload near `max_control_bytes()`
+# overflows the 512 KiB QuickJS stack of the Genode corpus run.
+def decode_control_bounded(+bytes: +List<U32>, maximum: Nat) -> ControlRead:
+  control_bounded(LH.frame_within(maximum, bytes), bytes)
+
 # Public entry point: decode one control payload (see the layout above).
 def decode_control(+bytes: +List<U32>) -> ControlRead:
-  control_bounded(LH.frame_within(max_control_bytes(), bytes), bytes)
+  decode_control_bounded(bytes, max_control_bytes())
 
 # Public entry point: the encoding a trusted test sender writes for `control`.
 def word_bytes(+word: U32) -> +List<U32>:

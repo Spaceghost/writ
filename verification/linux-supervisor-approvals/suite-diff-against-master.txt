@@ -1,8 +1,12 @@
 diff <bend Tests.bend at 51f76edb> <bend Tests.bend with this change>
+2147c2147
+< PASS: SupervisorOwner oversized control payload denies and only advances the clock
+---
+> PASS: SupervisorOwner control payload bound is 1024 bytes and is checked before decoding
 2175a2176,2187
 > PASS: SupervisorApproval submissions round-trip and match the native test's bytes
 > PASS: SupervisorApproval short, long, miscounted and unknown-kind bodies are refused
-> PASS: SupervisorOwner submission payload faults report kind, length, tag and size
+> PASS: SupervisorOwner submission payload faults report kind, length and tag
 > PASS: SupervisorOwner each role's own approval is accepted without containment
 > PASS: SupervisorOwner a role cannot submit another principal's approval
 > PASS: SupervisorOwner a consumed serial is refused as a replay

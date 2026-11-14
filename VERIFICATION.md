@@ -1220,7 +1220,8 @@ equivalent under the joint guard and reviewed only. The suite output differs
 from `51f76edb` only by the new checks, the native CPU run is identical, and
 the existing-law proof passed with `--verdict`. The issuer is still the
 synthetic canary, the submitting role is not told the new approval's id,
-submissions have no quota, role processes are still registered by the caller,
+submissions have no quota, the payload bound is tested at a small maximum
+because a list near 1024 elements overflows the Genode corpus's QuickJS stack, role processes are still registered by the caller,
 and no host is qualified.
 
 The [linear stored-approval lookup record](verification/issuance-linear-lookup/README.md)

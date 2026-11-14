@@ -1,0 +1,53 @@
+qjs (QuickJS 2026-06-04) --std --stack-size 524288 prelude.js+core-tests.js, where core-tests.js = bend Tests.bend -o core-tests.js
+prelude: the host replica of contrib/native-hosts/runtime/genode/core_checks.cc output shim; each line is prefixed by milliseconds since the previous line
+exit 0, wall 39.758 s
+
+1	PASS: SupervisorOwner control payload round-trips a revoke
+0	PASS: SupervisorOwner receiver verdicts translate in enum order
+24	PASS: SupervisorOwner issuer role revoke applies, advances clock and requires containment
+24	PASS: SupervisorOwner non-issuer role revoke is refused and only advances the clock
+48	PASS: SupervisorOwner unattributed and malformed senders deny and only advance the clock
+59	PASS: SupervisorOwner malformed control payloads deny and only advance the clock
+0	PASS: SupervisorOwner control payload bound is 1024 bytes and is checked before decoding
+0	PASS: SupervisorOwner control decoding checks version before length
+5	PASS: SupervisorOwner faulted sample contains; issuer revoke still applies, refused revoke does not
+44	PASS: SupervisorOwner expired owner contains; only an issuer revoke still applies
+39	PASS: SupervisorOwner revoke then frame: the frame sees containment and no effect is handed off
+39	PASS: SupervisorOwner frame and control share one watermark
+46	PASS: SupervisorOwner role map is retained across steps
+2	PASS: SupervisorOwner standalone owner reports a faulted sample as containment
+44	PASS: SupervisorOwner invalid role map denies the issuer role and only advances the clock
+34	PASS: SupervisorOwner revoke and drain remain available after containment
+0	SupervisorOwner: 16 checks passed
+60	PASS: SupervisorWire refused, applied and drained revoke replies in sequence
+105	PASS: SupervisorWire unattributed senders and malformed payloads deny without containment
+85	PASS: SupervisorWire faulted, expired and regressing samples contain
+93	PASS: SupervisorWire malformed frames reply ERROR and stop the interpreter
+0	PASS: SupervisorWire bounds frame payloads at 4096 bytes
+171	PASS: SupervisorWire monitor frames and control messages share one owner and watermark
+0	PASS: SupervisorWire exhausted and stopped interpreters require containment
+0	PASS: SupervisorWire renders effects in order
+0	SupervisorWire: 8 checks passed
+59	PASS: SupervisorProvision canary record installs its role map over the canary issuer root
+1	PASS: SupervisorProvision refuses unprotected configuration facts before decoding
+1	PASS: SupervisorProvision refuses oversized, out-of-range, misaligned and short records
+0	PASS: SupervisorProvision refuses unknown kinds, zero principals and short sections
+3	PASS: SupervisorProvision refuses invalid, empty or unbacked role maps and ambiguous placements
+3	PASS: SupervisorProvision adopts only a record whose root is the retained issuer's root
+63	PASS: SupervisorWire provisions first, then attributes revokes through the installed map
+30	PASS: SupervisorWire refuses unprovisioned frames, refused records and reprovisioning
+0	SupervisorProvision: 8 checks passed
+15	PASS: SupervisorApproval submissions round-trip and match the native test's bytes
+1	PASS: SupervisorApproval short, long, miscounted and unknown-kind bodies are refused
+6	PASS: SupervisorOwner submission payload faults report kind, length and tag
+131	PASS: SupervisorOwner each role's own approval is accepted without containment
+104	PASS: SupervisorOwner a role cannot submit another principal's approval
+127	PASS: SupervisorOwner a consumed serial is refused as a replay
+115	PASS: SupervisorOwner an approval's lifetime is judged at the sampled time
+109	PASS: SupervisorOwner a submitted approval is revocable only by its issuer role
+49	PASS: SupervisorOwner nothing is submitted on a faulted, expired or contained owner
+193	PASS: SupervisorWire approval submission sequence replies exactly
+0	SupervisorApproval: 11 checks passed
+0	LocalSupervisor: 3 checks passed
+0	ALL LIBRARY TESTS PASSED
+EXIT	0

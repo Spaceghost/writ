@@ -142,9 +142,6 @@ def control_faults() -> Bool:
   OT.is_bad(O.decode_control(O.framed(2, with_word(body(), 23n, 9))), O.ControlKind{})
     && OT.is_bad(O.decode_control(O.framed(3, without_last(body()))), O.ControlLength{})
     && OT.is_bad(O.decode_control(O.framed(4, body())), O.ControlTag{})
-    && OT.is_bad(O.decode_control(OT.zeros(1028n)), O.ControlTooLong{})
-    && OT.is_bad(O.decode_control(OT.zeros(1025n)), O.ControlTooLong{})
-    && OT.is_bad(O.decode_control(OT.zeros(1024n)), O.ControlVersion{})
     && OT.is_bad(O.decode_control(with_word(submit_source(fresh_source()), 8n, 30)), O.ControlLength{})
 
 def next_id(owner: JA.Joint) -> Nat:
@@ -283,7 +280,7 @@ def approval_checks(+s: JO.Stages) -> IO(Unit):
   do IO<Unit>:
     Test.check(codec_round_trip(), "SupervisorApproval submissions round-trip and match the native test's bytes")
     Test.check(body_faults(), "SupervisorApproval short, long, miscounted and unknown-kind bodies are refused")
-    Test.check(control_faults(), "SupervisorOwner submission payload faults report kind, length, tag and size")
+    Test.check(control_faults(), "SupervisorOwner submission payload faults report kind, length and tag")
     Test.check(authorities_accepted(s), "SupervisorOwner each role's own approval is accepted without containment")
     Test.check(wrong_principal_refused(s), "SupervisorOwner a role cannot submit another principal's approval")
     Test.check(replay_refused(s), "SupervisorOwner a consumed serial is refused as a replay")

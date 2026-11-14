@@ -68,18 +68,33 @@ for a write approval the destination and a write domain. A one-source body is
 | Run | Result |
 | --- | --- |
 | [`SupervisorApprovalTests.bend`](../../hosts/linux/monitor/SupervisorApprovalTests.bend) | [11 checks](approval-checks.txt) |
-| [`SupervisorOwnerTests.bend`](../../hosts/linux/monitor/SupervisorOwnerTests.bend) | [16 checks](owner-checks.txt); the oversized case now uses 1028 bytes |
+| [`SupervisorOwnerTests.bend`](../../hosts/linux/monitor/SupervisorOwnerTests.bend) | [16 checks](owner-checks.txt); the oversized check now pins the bound and tests it at 64 bytes |
 | [`SupervisorWireTests.bend`](../../hosts/linux/monitor/SupervisorWireTests.bend), [`SupervisorProvisionTests.bend`](../../hosts/linux/monitor/SupervisorProvisionTests.bend) | 8 and 8 checks, unchanged |
 | Native driver test (gcc, Makefile flags with `-Werror`) | [46 cases](native-run.txt), exit 0; [20 repeats](native-repeat.txt) |
 | clang build with `-Werror` | builds |
 | [Mutants](mutant-results.txt) ([diffs and outputs](mutants/)) | 19 of 21 Bend mutants and both C mutants fail; the two Bend survivors are listed below |
-| `bend Tests.bend` | [differs from `51f76edb`](suite-diff-against-master.txt) only by the twelve new lines; `check_core.py` verifies 3269 (3258 + 11), see the [suite tail](suite-tail.txt) |
+| `bend Tests.bend` | [differs from `51f76edb`](suite-diff-against-master.txt) by the twelve new lines and the renamed oversized-payload check; `check_core.py` verifies 3269 (3258 + 11), see the [suite tail](suite-tail.txt) |
 | Native CPU suite (`clang -std=c11 -O0`, `+RTS --threads 4 --gpu off`) | [byte-identical](native.txt) to the Bend run; no GPU test is claimed |
 | `bend PROOF.bend`, and `--verdict` with the Lean-built BendTT | [`ALL PROOFS CHECK`](verdict.txt); no law mentions approval submission on the channel |
 
 The [commands](commands.txt) and the [environment](environment.txt) are
 recorded. The receiver needs `SO_PASSRIGHTS`, so Linux 6.16 or newer; the test
 exits 77 on older kernels. This test is not part of any CI lane.
+
+### Genode stack
+
+The first push of this change (`593db6b2`) failed the Genode lane: the corpus
+stopped at the owner's oversized-payload check, which then pushed a 1028-byte
+list through the decoder, and timed out after 18 minutes. Run locally under the
+pinned QuickJS 2026-06-04 with the corpus's 512 KiB stack (`policy.cc`), that
+check ends with `InternalError: stack overflow`; under node and the native C
+build it takes milliseconds. As in `ddc51b99`, the suite now checks the bound
+at a small explicit maximum (`decode_control_bounded`) and pins
+`max_control_bytes()` at 1024. The full suite, generated as JavaScript, then
+passes under that QuickJS and stack in 40 seconds
+([QuickJS run](quickjs-run.txt)). A control payload near 1024 bytes would
+overflow that stack in the same way; the supervisor's interpreter is node, and
+the native test sends real 128-byte approvals through it.
 
 ## Cases
 
@@ -98,9 +113,11 @@ The Bend checks cover:
 - the test writer's bytes equal the native test's, and decoding then encoding
   returns the same bytes for both kinds, a three-source Copy manifest and a
   Transform plan;
-- short, long, miscounted and unknown-kind bodies, and the kind, length, tag
-  and size faults at the control layer (1024 bytes reach decoding, 1025 are
-  too long);
+- short, long, miscounted and unknown-kind bodies, and the kind, length and
+  tag faults at the control layer;
+- the payload bound pinned at 1024 bytes and enforced before decoding, tested
+  at a small explicit maximum (64 bytes reach decoding, 65 are too long; see
+  "Genode stack");
 - each role's own approval accepted as id 16, with the issuer revision and next
   id advanced by one, the clock at the sample, the portable state unchanged and
   no containment;

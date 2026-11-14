@@ -148,11 +148,6 @@ def zeros(+count: Nat) -> +List<U32>:
     case 0n: []
     case 1n+left: 0 <> zeros(left)
 
-def oversized_advances(+s: JO.Stages) -> Bool:
-  +before = JO.stage_running(s)
-  +long = control(before, C.FromRole{1n}, zeros(1028n), LH.Sample{115n})
-  is_undecoded(O.OwnerStep.result(long), O.ControlTooLong{}) && only_clock_moved(before, long, 115n)
-
 # A regressing or faulted sample poisons the clock and contains the owner
 # before attribution. Revocation stays available as cleanup: an issuer's revoke
 # is still applied, while a refused one is reported as containment with the
@@ -298,6 +293,16 @@ def is_bad(read: O.ControlRead, expected: O.ControlError) -> Bool:
     case O.ControlBad{got}: error_equal(got, expected)
     case _: False{}
 
+# The bound is pinned at 1024 bytes and checked before any other decoding, at
+# a small explicit maximum: a list near 1024 elements overflows the 512 KiB
+# QuickJS stack of the Genode corpus run. The native driver test sends real
+# approval payloads; a refused decode at the owner is `malformed_advances`.
+def oversized_bound() -> Bool:
+  Nat.is_eq(O.max_control_bytes(), 1024n)
+    && is_bad(O.decode_control_bounded(zeros(65n), 64n), O.ControlTooLong{})
+    && is_bad(O.decode_control_bounded(zeros(68n), 64n), O.ControlTooLong{})
+    && is_bad(O.decode_control_bounded(zeros(64n), 64n), O.ControlVersion{})
+
 # Version is checked before the header length: a frame wrong in both reports
 # the version.
 def version_before_length() -> Bool:
@@ -341,7 +346,7 @@ def owner_checks(+s: JO.Stages) -> IO(Unit):
     Test.check(non_issuer_refused(s), "SupervisorOwner non-issuer role revoke is refused and only advances the clock")
     Test.check(unattributed_advances(s), "SupervisorOwner unattributed and malformed senders deny and only advance the clock")
     Test.check(malformed_advances(s), "SupervisorOwner malformed control payloads deny and only advance the clock")
-    Test.check(oversized_advances(s), "SupervisorOwner oversized control payload denies and only advances the clock")
+    Test.check(oversized_bound(), "SupervisorOwner control payload bound is 1024 bytes and is checked before decoding")
     Test.check(version_before_length(), "SupervisorOwner control decoding checks version before length")
     Test.check(bad_clock_contains(s), "SupervisorOwner faulted sample contains; issuer revoke still applies, refused revoke does not")
     Test.check(expired_contains(s), "SupervisorOwner expired owner contains; only an issuer revoke still applies")
