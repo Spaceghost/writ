@@ -242,10 +242,14 @@ committed ledger. This slice does not perform original-graph verification or
 commit a Copy.
 Its non-grant policy records are frozen synthetic inputs. The
 [supervisor owner](../../../hosts/linux/monitor/SupervisorOwner.bend) model now
-serializes one live issuer change, revocation, with monitor frames: each step
-samples the clock first, attributes a channel datagram to its sender role's
-principal, and passes a decoded revoke to the same joint revoke, which stays
-available, with the drain, after containment. A native
+serializes live issuer changes, approval submission and revocation, with
+monitor frames: each step samples the clock first, attributes a channel
+datagram to its sender role's principal, and passes a decoded revoke to the
+same joint revoke, which stays available, with the drain, after containment.
+A decoded source-read or destination-write approval is submitted through
+Issuance's existing submit transitions as that principal; the record's issuer
+field is only a claim those transitions check, and nothing is submitted on a
+contained owner. A native
 driver (`supervisor_owner.c`) now runs it in a private interpreter over the
 receiver. Its role-index-to-principal map is installed from a protected
 configuration record (`SupervisorProvision.bend`): the driver forwards the
@@ -257,9 +261,9 @@ file facts are the only gate, and they do not authenticate the operator. Through
 the driver's API, workers are registered only as it launches them, after
 provisioning. Which process holds which role index is still registered by the
 caller, so binding each worker lifetime and session to its principal (LH-011)
-remains open. The issuer itself is still the synthetic canary, the clock
-samples are scripted, and approval submission still uses trusted in-process
-construction. A deployment must serialize every relevant
+remains open. The issuer itself is still the synthetic canary with its
+in-process approvals, the submitting role is not told a new approval's id, and
+the clock samples are scripted. A deployment must serialize every relevant
 authority/policy change or treat the owner as incomplete.
 
 Every accepted issuer revoke, including an unrelated one, immediately returns

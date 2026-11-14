@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorApproval.bend
++++ b/hosts/linux/monitor/SupervisorApproval.bend
+@@ -109,7 +109,7 @@
+     case +version <> +serial <> +issuer <> +object <> +over <> +domain <> +graph <> +policy <> +authority <> +invocation <> +count <> +rest:
+       after_objects(Head{version, serial, issuer, object_version(object, over), domain,
+         T.Stamp{U32.to_nat(graph), U32.to_nat(policy), U32.to_nat(authority)}, invocation},
+-        take_objects(rest, U32.is_eq(count, 0), count))
++        take_objects(rest, False{}, 1))
+     case _: PartsLength{}
+ 
+ # --- Test writer ---------------------------------------------------------------

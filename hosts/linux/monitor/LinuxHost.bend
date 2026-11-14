@@ -711,6 +711,52 @@ def joint_revoke(+state: State, +from: Iss.Principal, +approval: Nat) -> JointAc
     case State{_, _, _, JA.NoJoint{}}: JointRefused{state}
     case _: JointContain{state, False{}}
 
+# What one approval submission did. `SubmitAccepted` carries the issuer's new
+# approval id; only `SubmitContained` requires containment.
+type JointSubmission is Data:
+  SubmitAccepted{state: State, id: Nat}
+  SubmitRefused{state: State}
+  SubmitContained{state: State}
+
+def submit_entry(+issuer: Iss.State, +from: Iss.Principal, approval: Iss.Approval, +now: Nat) -> Iss.Change:
+  match approval:
+    case Iss.SourceEntry{source}: Iss.submit_source(issuer, Iss.revision(issuer), from, source, now)
+    case Iss.WriteEntry{write}: Iss.submit_write(issuer, Iss.revision(issuer), from, write, now)
+
+# Retains the issuer a submission produced; every other joint component,
+# including the phase, is unchanged.
+def submit_change(+state: State, changed: Iss.Change) -> JointSubmission:
+  match state changed:
+    case State{p, records, time, JA.Joint{_, rendezvous, frontend, transfer, negotiation, context,
+        lineage, phase, JA.NoJoint{}}} Iss.Changed{issuer, id}:
+      SubmitAccepted{State{p, records, time, JA.Joint{issuer, rendezvous, frontend, transfer,
+        negotiation, context, lineage, phase, JA.NoJoint{}}}, id}
+    case _ Iss.Rejected{_, _}: SubmitRefused{state}
+    case _ _: SubmitContained{contain_state(state)}
+
+def joint_submit_open(open: Bool, +state: State, +issuer: Iss.State, +from: Iss.Principal,
+    approval: Iss.Approval, +now: Nat) -> JointSubmission:
+  match open:
+    case True{}: submit_change(state, submit_entry(issuer, from, approval, now))
+    case False{}: SubmitContained{contain_state(state)}
+
+# Trusted authority-control action, unavailable to worker and broker frames:
+# submit an approval on behalf of the authenticated principal `from` through
+# the existing `Iss.submit_source` / `Iss.submit_write`, at the issuer's
+# current revision and the sampled `now`. Those transitions decide every
+# check; this adds none. A stored approval grants nothing until a later
+# registration cites it, so acceptance changes no root and requires no
+# containment. Unlike revocation, submission is not cleanup: on a failed,
+# stale or poisoned owner, or with no revision room, nothing is submitted and
+# containment is required.
+def joint_submit(+state: State, +from: Iss.Principal, approval: Iss.Approval, +now: Nat) -> JointSubmission:
+  match state:
+    case State{_, _, _, JA.Joint{+issuer, _, _, _, _, _, _, +phase, JA.NoJoint{}}}:
+      joint_submit_open(JA.counter_room(Iss.revision(issuer)) && active_phase(phase)
+        && retained_clock_current(state), state, issuer, from, approval, now)
+    case State{_, _, _, JA.NoJoint{}}: SubmitRefused{state}
+    case _: SubmitContained{state}
+
 type JointDrain is Data:
   JointDrainStep{state: State, effects: +List<P.Effect>}
   JointDrainComplete{state: State}

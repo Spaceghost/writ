@@ -242,6 +242,8 @@ def handled_name(handled: O.Handled) -> String:
   match handled:
     case O.RevokeApplied{_}: "REVOKE_APPLIED"
     case O.RevokeRefused{_}: "REVOKE_REFUSED"
+    case O.ApprovalAccepted{_, _}: "APPROVAL_ACCEPTED"
+    case O.ApprovalRefused{_}: "APPROVAL_REFUSED"
     case O.ChannelDenied{_, _}: "CHANNEL_DENIED"
     case O.ControlUndecoded{_, _}: "CONTROL_UNDECODED"
     case O.Contained{_}: "CONTAINED"

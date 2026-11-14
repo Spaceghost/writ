@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorWire.bend
++++ b/hosts/linux/monitor/SupervisorWire.bend
+@@ -242,7 +242,7 @@
+   match handled:
+     case O.RevokeApplied{_}: "REVOKE_APPLIED"
+     case O.RevokeRefused{_}: "REVOKE_REFUSED"
+-    case O.ApprovalAccepted{_, _}: "APPROVAL_ACCEPTED"
++    case O.ApprovalAccepted{_, _}: "REVOKE_REFUSED"
+     case O.ApprovalRefused{_}: "APPROVAL_REFUSED"
+     case O.ChannelDenied{_, _}: "CHANNEL_DENIED"
+     case O.ControlUndecoded{_, _}: "CONTROL_UNDECODED"

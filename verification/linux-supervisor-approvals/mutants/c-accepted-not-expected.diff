@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -222,7 +222,7 @@
+ static int control_outcome(enum writ_owner_outcome o)
+ {
+     return o == WRIT_OWNER_REVOKE_APPLIED || o == WRIT_OWNER_REVOKE_REFUSED ||
+-           o == WRIT_OWNER_APPROVAL_ACCEPTED || o == WRIT_OWNER_APPROVAL_REFUSED ||
++           o == WRIT_OWNER_APPROVAL_REFUSED ||
+            o == WRIT_OWNER_CHANNEL_DENIED || o == WRIT_OWNER_CONTROL_UNDECODED ||
+            o == WRIT_OWNER_CONTAINED;
+ }

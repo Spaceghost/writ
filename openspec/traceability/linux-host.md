@@ -234,6 +234,36 @@ The record installs the role map; the issuer's
 approvals still come from the synthetic canary, not from authenticated
 submissions over the channel.
 
+The [supervisor approval record](../../verification/linux-supervisor-approvals/README.md)
+carries source-read and destination-write approval submission on the same
+channel ([SupervisorApproval.bend](../../hosts/linux/monitor/SupervisorApproval.bend),
+`LinuxHost.joint_submit`). Each submission is made as the sender role's
+attributed principal, and Issuance's existing `submit_source` / `submit_write`
+decide it. These checks show attribution only: the role, not the record, names
+the principal, and a write role cannot supply a source approval. They do not
+satisfy LH-011, whose administrator actions must be authenticated: here a
+caller-registered role process, identified by its pidfd, is the whole basis for
+a submission, and no test exercises the LH-011 grant-denial scenario. The checks
+are, at the model and owned-process boundary only:
+
+- Bend checks in [SupervisorApprovalTests.bend](../../hosts/linux/monitor/SupervisorApprovalTests.bend):
+  `SupervisorOwner each role's own approval is accepted without containment`,
+  `SupervisorOwner a role cannot submit another principal's approval`,
+  `SupervisorOwner a consumed serial is refused as a replay`,
+  `SupervisorOwner an approval's lifetime is judged at the sampled time`,
+  `SupervisorOwner nothing is submitted on a faulted, expired or contained owner`,
+  `LinuxHost joint submit refuses a stale retained clock and a terminal issuer revision`
+  and `SupervisorWire approval submission sequence replies exactly`.
+- Native cases: `source_role_submission_accepted`,
+  `other_role_submission_refused`, `unregistered_submission_denied` and
+  `write_role_submission_accepted`.
+
+For LH-012 it adds `SupervisorOwner a submitted approval is revocable only by
+its issuer role` and the native `submitted_approval_revoked`. The issuer is
+still the synthetic canary, the submitting role is not told the new id, grant
+registration is not carried on the channel, and role processes are still
+registered by the caller.
+
 ## Synthetic Rendezvous owner (LH-012, LH-013, LH-015 and LH-016)
 
 [LinuxJointOwnerTests.bend](../../hosts/linux/monitor/LinuxJointOwnerTests.bend)

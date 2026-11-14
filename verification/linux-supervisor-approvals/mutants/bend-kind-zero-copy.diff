@@ -1,0 +1,10 @@
+--- a/hosts/linux/monitor/SupervisorApproval.bend
++++ b/hosts/linux/monitor/SupervisorApproval.bend
+@@ -68,6 +68,7 @@
+ # The wire kind words, as PlannerPlanMatch.kind_equal reads them.
+ def kind_of(+word: U32) -> Maybe<&2, T.OpKind>:
+   match word:
++    case 0: Some{T.Copy{}}
+     case 1: Some{T.Copy{}}
+     case 2: Some{T.Transform{}}
+     case 3: Some{T.Summarize{}}

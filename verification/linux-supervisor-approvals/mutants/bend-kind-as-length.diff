@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorOwner.bend
++++ b/hosts/linux/monitor/SupervisorOwner.bend
+@@ -126,7 +126,7 @@
+   match read:
+     case SA.PartsRead{parts}: ControlRead{SubmitSource{SA.as_source(parts)}}
+     case SA.PartsLength{}: ControlBad{ControlLength{}}
+-    case SA.PartsKind{}: ControlBad{ControlKind{}}
++    case SA.PartsKind{}: ControlBad{ControlLength{}}
+ 
+ def write_read(read: SA.PartsRead) -> ControlRead:
+   match read:

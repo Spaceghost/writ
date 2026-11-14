@@ -173,7 +173,8 @@ Mutant notes:
 - **Issuer installation:** the record must equal the retained issuer's live
   stamp, directory and placements, but the
   approvals and grants the issuer holds are the synthetic canary's. Approval
-  submission through the channel is the next step.
+  submission through the channel was added later; see the
+  [approval record](../linux-supervisor-approvals/README.md).
 - **Role and session binding:** the channel's role processes are still
   registered by the caller (`writ_roles_add`), not launched by the driver, and
   no worker lifetime or session is bound to a principal (LH-011).

@@ -35,6 +35,8 @@ static const char *const outcome_names[] = {
     [WRIT_OWNER_EXHAUSTED] = "EXHAUSTED",
     [WRIT_OWNER_PROVISIONED] = "PROVISIONED",
     [WRIT_OWNER_PROVISION_REFUSED] = "PROVISION_REFUSED",
+    [WRIT_OWNER_APPROVAL_ACCEPTED] = "APPROVAL_ACCEPTED",
+    [WRIT_OWNER_APPROVAL_REFUSED] = "APPROVAL_REFUSED",
 };
 
 struct writ_clock_sample writ_clock_boottime(void *unused)
@@ -220,6 +222,7 @@ static int provision_outcome(enum writ_owner_outcome o)
 static int control_outcome(enum writ_owner_outcome o)
 {
     return o == WRIT_OWNER_REVOKE_APPLIED || o == WRIT_OWNER_REVOKE_REFUSED ||
+           o == WRIT_OWNER_APPROVAL_ACCEPTED || o == WRIT_OWNER_APPROVAL_REFUSED ||
            o == WRIT_OWNER_CHANNEL_DENIED || o == WRIT_OWNER_CONTROL_UNDECODED ||
            o == WRIT_OWNER_CONTAINED;
 }

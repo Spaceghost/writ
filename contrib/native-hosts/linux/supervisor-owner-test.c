@@ -78,6 +78,22 @@ static int count_own_fds(void)
 /* LINUXSUP v1 control payloads (SupervisorOwner.encode_control). */
 static const unsigned char revoke5[16] = { 1,0,0,0, 1,0,0,0, 1,0,0,0, 5,0,0,0 };
 static const unsigned char malformed[3] = { 1, 2, 3 };
+static const unsigned char revoke16[16] = { 1,0,0,0, 1,0,0,0, 1,0,0,0, 16,0,0,0 };
+
+/* SupervisorApprovalTests.fresh_source() and fresh_write() as tags 2 and 3:
+   serial 900 of principal 101 (read domain 5, source 10v4) and of principal
+   102 (write domain 6, destination 20v8), over the fixture scope (live 1/2/3,
+   invocation 99, manifest [10v4], destination 20v8, code 7 x 8, Summarize,
+   output 2, write domain 6, subject 7), rights 3, valid until 200. */
+#define APPROVAL_WORDS 32
+#define APPROVAL_SCOPE 1, 2, 3, 99, 1, 10, 4, 20, 8, 7, 7, 7, 7, 7, 7, 7, 7, 3, 2, 6, 7
+static const uint32_t source_words[APPROVAL_WORDS] = {
+    1, 2, 29, 1, 900, 101, 10, 4, 5, APPROVAL_SCOPE, 3, 200
+};
+static const uint32_t write_words[APPROVAL_WORDS] = {
+    1, 3, 29, 1, 900, 102, 20, 8, 6, APPROVAL_SCOPE, 3, 200
+};
+static unsigned char submit_source[4 * APPROVAL_WORDS], submit_write[4 * APPROVAL_WORDS];
 
 /* SupervisorProvisionTests.canary(): live 1/2/3, roles 1 -> 101 and 2 -> 102,
    the canary directory (five authorities) and placements (four). */
@@ -179,6 +195,7 @@ static _Noreturn void worker_main(void)
    Commands are one byte on a private SEQPACKET socket; the child replies 'k'
    after the send succeeded, 'e' otherwise.
      r  send revoke(5) on tx     b  send a 3-byte payload on tx
+     s  send submit_source       w  send submit_write      v  send revoke(16)
    A child with tx == -1 is a worker that only waits. */
 static void child_loop(int cmd, int tx)
 {
@@ -188,6 +205,9 @@ static void child_loop(int cmd, int tx)
         int ok = 0;
         if (op == 'r') ok = send(tx, revoke5, sizeof revoke5, MSG_NOSIGNAL) == (ssize_t)sizeof revoke5;
         else if (op == 'b') ok = send(tx, malformed, sizeof malformed, MSG_NOSIGNAL) == (ssize_t)sizeof malformed;
+        else if (op == 's') ok = send(tx, submit_source, sizeof submit_source, MSG_NOSIGNAL) == (ssize_t)sizeof submit_source;
+        else if (op == 'w') ok = send(tx, submit_write, sizeof submit_write, MSG_NOSIGNAL) == (ssize_t)sizeof submit_write;
+        else if (op == 'v') ok = send(tx, revoke16, sizeof revoke16, MSG_NOSIGNAL) == (ssize_t)sizeof revoke16;
         char reply = ok ? 'k' : 'e';
         if (send(cmd, &reply, 1, MSG_NOSIGNAL) != 1) _exit(2);
     }
@@ -436,6 +456,37 @@ static void ordered_revocation(void)
     check(writ_supervisor_serve_one(&s.sup, s.channel, &s.roles, &r) == -1 && errno == EAGAIN &&
           s.sup.sequence == 7 && s.clock.next == 4 && !s.sup.failed,
           "idle_channel_not_forwarded", "nothing queued: EAGAIN, no frame sent, no sample taken");
+    end(&s);
+}
+
+/* Each role submits its own approval through the channel; the principal is
+   the receiver's attribution, not the record's issuer field. */
+static void approval_submission(void)
+{
+    const struct writ_clock_sample samples[] = { at(111), at(112), at(113), at(114), at(115) };
+    struct scenario s;
+    begin(&s, samples, 5);
+    struct writ_owner_reply r;
+
+    command(&s.a, 's', "A submit source");
+    check(serve(&s, &r) == 0 && is(&r, WRIT_OWNER_APPROVAL_ACCEPTED, 0, 0) && alive(&s.w) && !s.sup.contained,
+          "source_role_submission_accepted", "role 1 (101) submits its read-domain-5 approval: APPROVAL_ACCEPTED, no containment");
+
+    command(&s.b, 's', "B submit source");
+    check(serve(&s, &r) == 0 && is(&r, WRIT_OWNER_APPROVAL_REFUSED, 0, 0) && !s.sup.contained,
+          "other_role_submission_refused", "role 2 (102) sends principal 101's approval: APPROVAL_REFUSED");
+
+    command(&s.c, 's', "C submit source");
+    check(serve(&s, &r) == 0 && is(&r, WRIT_OWNER_CHANNEL_DENIED, 0, 0) && !s.sup.contained,
+          "unregistered_submission_denied", "unregistered process submits: CHANNEL_DENIED");
+
+    command(&s.b, 'w', "B submit write");
+    check(serve(&s, &r) == 0 && is(&r, WRIT_OWNER_APPROVAL_ACCEPTED, 0, 0) && alive(&s.w) && !s.sup.contained,
+          "write_role_submission_accepted", "role 2 (102) submits its write-domain-6 approval: APPROVAL_ACCEPTED");
+
+    command(&s.a, 'v', "A revoke 16");
+    check(serve(&s, &r) == 0 && is(&r, WRIT_OWNER_REVOKE_APPLIED, 1, 0) && s.sup.contained,
+          "submitted_approval_revoked", "role 1 revokes its submitted approval 16: REVOKE_APPLIED, containment");
     end(&s);
 }
 
@@ -784,6 +835,8 @@ int main(int argc, char **argv)
     if (profile == ENOTSUP) { errno = ENOTSUP; unsupported("pidfs, SO_PASSPIDFD or SO_PASSRIGHTS"); }
     if (profile) { errno = profile; die("profile check"); }
     make_records();
+    record_bytes(source_words, APPROVAL_WORDS, submit_source);
+    record_bytes(write_words, APPROVAL_WORDS, submit_write);
     /* Launched workers must not inherit this (see worker_main). */
     inheritable = dup(records);
     if (inheritable < 0) die("dup");
@@ -796,6 +849,7 @@ int main(int argc, char **argv)
     provisioning();
     boottime();
     ordered_revocation();
+    approval_submission();
     regressing_clock();
     expired_and_unavailable();
     unregistered_worker();

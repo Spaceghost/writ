@@ -1,0 +1,13 @@
+--- a/hosts/linux/monitor/SupervisorOwner.bend
++++ b/hosts/linux/monitor/SupervisorOwner.bend
+@@ -137,8 +137,8 @@
+ def control_body(+tag: U32, body: +List<U32>) -> ControlRead:
+   match tag:
+     case 1: revoke_body(body)
+-    case 2: source_read(SA.decode_parts(body))
+-    case 3: write_read(SA.decode_parts(body))
++    case 2: write_read(SA.decode_parts(body))
++    case 3: source_read(SA.decode_parts(body))
+     case _: ControlBad{ControlTag{}}
+ 
+ def control_words(+words: +List<U32>) -> ControlRead:

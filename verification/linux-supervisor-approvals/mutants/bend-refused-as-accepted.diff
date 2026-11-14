@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorOwner.bend
++++ b/hosts/linux/monitor/SupervisorOwner.bend
+@@ -324,7 +324,7 @@
+ def submission_result(submitted: LH.JointSubmission) -> Handled:
+   match submitted:
+     case LH.SubmitAccepted{state, id}: ApprovalAccepted{state, id}
+-    case LH.SubmitRefused{state}: ApprovalRefused{state}
++    case LH.SubmitRefused{state}: ApprovalAccepted{state, 0n}
+     case LH.SubmitContained{state}: Contained{state}
+ 
+ # `live` is false on the containment path: there a submission is not made and

@@ -84,6 +84,7 @@ def error_equal(a: O.ControlError, b: O.ControlError) -> Bool:
     case O.ControlVersion{} O.ControlVersion{}: True{}
     case O.ControlTag{} O.ControlTag{}: True{}
     case O.ControlLength{} O.ControlLength{}: True{}
+    case O.ControlKind{} O.ControlKind{}: True{}
     case _ _: False{}
 
 def is_undecoded(result: O.OwnerResult, expected: O.ControlError) -> Bool:
@@ -149,7 +150,7 @@ def zeros(+count: Nat) -> +List<U32>:
 
 def oversized_advances(+s: JO.Stages) -> Bool:
   +before = JO.stage_running(s)
-  +long = control(before, C.FromRole{1n}, zeros(68n), LH.Sample{115n})
+  +long = control(before, C.FromRole{1n}, zeros(1028n), LH.Sample{115n})
   is_undecoded(O.OwnerStep.result(long), O.ControlTooLong{}) && only_clock_moved(before, long, 115n)
 
 # A regressing or faulted sample poisons the clock and contains the owner

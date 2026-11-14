@@ -1,0 +1,12 @@
+PASS: SupervisorApproval submissions round-trip and match the native test's bytes
+PASS: SupervisorApproval short, long, miscounted and unknown-kind bodies are refused
+PASS: SupervisorOwner submission payload faults report kind, length, tag and size
+PASS: SupervisorOwner each role's own approval is accepted without containment
+PASS: SupervisorOwner a role cannot submit another principal's approval
+PASS: SupervisorOwner a consumed serial is refused as a replay
+PASS: SupervisorOwner an approval's lifetime is judged at the sampled time
+PASS: SupervisorOwner a submitted approval is revocable only by its issuer role
+PASS: SupervisorOwner nothing is submitted on a faulted, expired or contained owner
+PASS: LinuxHost joint submit refuses a stale retained clock and a terminal issuer revision
+PASS: SupervisorWire approval submission sequence replies exactly
+SupervisorApproval: 11 checks passed

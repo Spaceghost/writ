@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/LinuxHost.bend
++++ b/hosts/linux/monitor/LinuxHost.bend
+@@ -753,7 +753,7 @@
+   match state:
+     case State{_, _, _, JA.Joint{+issuer, _, _, _, _, _, _, +phase, JA.NoJoint{}}}:
+       joint_submit_open(JA.counter_room(Iss.revision(issuer)) && active_phase(phase)
+-        && retained_clock_current(state), state, issuer, from, approval, now)
++        && True{}, state, issuer, from, approval, now)
+     case State{_, _, _, JA.NoJoint{}}: SubmitRefused{state}
+     case _: SubmitContained{state}
+ 

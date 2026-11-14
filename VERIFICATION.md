@@ -1208,6 +1208,21 @@ passed with `--verdict`. File facts do not authenticate an operator, the issuer
 is still the synthetic canary, role processes are still registered by the
 caller, and no host is qualified.
 
+The [supervisor approval record](verification/linux-supervisor-approvals/README.md)
+carries approval submission on that channel. A provisioned role's datagram
+holding a source-read or destination-write approval (`SupervisorApproval.bend`)
+is submitted through Issuance's existing transitions as the role's attributed
+principal (`LinuxHost.joint_submit`); the record's issuer field is only a
+claim. An accepted submission requires no containment, and nothing is
+submitted on a contained owner. 11 Bend checks and 46 native cases pass;
+19 of 21 Bend mutants and both C mutants fail, and the two Bend survivors are
+equivalent under the joint guard and reviewed only. The suite output differs
+from `51f76edb` only by the new checks, the native CPU run is identical, and
+the existing-law proof passed with `--verdict`. The issuer is still the
+synthetic canary, the submitting role is not told the new approval's id,
+submissions have no quota, role processes are still registered by the caller,
+and no host is qualified.
+
 The [linear stored-approval lookup record](verification/issuance-linear-lookup/README.md)
 replaces a quadratic duplicate scan in `Issuance.find_stored` with one pass
 that returns the same answer for every list. Six direct lookup checks and two

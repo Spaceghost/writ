@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorOwner.bend
++++ b/hosts/linux/monitor/SupervisorOwner.bend
+@@ -333,7 +333,7 @@
+     +now: Nat) -> Handled:
+   match live:
+     case True{}: submission_result(LH.joint_submit(state, from, approval, now))
+-    case False{}: Contained{state}
++    case False{}: submission_result(LH.joint_submit(state, from, approval, now))
+ 
+ def on_control(+state: LH.State, +from: Iss.Principal, control: Control, +now: Nat, live: Bool) -> Handled:
+   match control:

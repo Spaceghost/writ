@@ -1,0 +1,3 @@
+PASS: SupervisorApproval submissions round-trip and match the native test's bytes
+PASS: SupervisorApproval short, long, miscounted and unknown-kind bodies are refused
+FAIL: SupervisorOwner submission payload faults report kind, length, tag and size

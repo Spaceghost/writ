@@ -1,0 +1,29 @@
+Bend mutants of hosts/linux/monitor/LinuxHost.bend, SupervisorOwner.bend, SupervisorApproval.bend and SupervisorWire.bend, each run with:
+  bend hosts/linux/monitor/SupervisorApprovalTests.bend && bend hosts/linux/monitor/SupervisorOwnerTests.bend
+C mutants of contrib/native-hosts/linux/supervisor_owner.c, each built without -Werror and run as TMPDIR=OUT supervisor-owner-test NODE BRIDGE MODULE FAKE
+The first failing case of each run is shown. sample-not-used and bound-1027 were added after review,
+together with the checks that catch them; the other runs predate those checks, which only add assertions.
+
+bend-phase-unchecked: survives
+bend-retained-clock-unchecked: fails; FAIL: LinuxHost joint submit refuses a stale retained clock and a terminal issuer revision
+bend-counter-unchecked: fails; the terminal-revision check aborts the run: "bend: a Nat past the largest immediate 2^48-1"
+bend-issuer-not-retained: fails; FAIL: SupervisorOwner each role's own approval is accepted without containment
+bend-refusal-contains: fails; FAIL: SupervisorOwner a role cannot submit another principal's approval
+bend-claim-as-principal: fails; FAIL: SupervisorOwner a role cannot submit another principal's approval
+bend-write-as-source-principal: fails; FAIL: SupervisorOwner a role cannot submit another principal's approval
+bend-submitted-when-contained: survives
+bend-accepted-contains: fails; FAIL: SupervisorOwner each role's own approval is accepted without containment
+bend-refused-as-accepted: fails; FAIL: SupervisorOwner a role cannot submit another principal's approval
+bend-tags-swapped: fails; FAIL: SupervisorApproval submissions round-trip and match the native test's bytes
+bend-old-bound: fails; FAIL: SupervisorApproval submissions round-trip and match the native test's bytes
+bend-kind-as-length: fails; FAIL: SupervisorOwner submission payload faults report kind, length, tag and size
+bend-trailing-allowed: fails; FAIL: SupervisorApproval short, long, miscounted and unknown-kind bodies are refused
+bend-count-ignored: fails; FAIL: SupervisorApproval submissions round-trip and match the native test's bytes
+bend-kind-zero-copy: fails; FAIL: SupervisorApproval short, long, miscounted and unknown-kind bodies are refused
+bend-transform-summarize: fails; FAIL: SupervisorApproval submissions round-trip and match the native test's bytes
+bend-subject-from-write-domain: fails; FAIL: SupervisorApproval submissions round-trip and match the native test's bytes
+bend-sample-not-used: fails; FAIL: SupervisorOwner an approval's lifetime is judged at the sampled time
+bend-bound-1027: fails; FAIL: SupervisorOwner submission payload faults report kind, length, tag and size
+bend-accepted-unnamed: fails; FAIL: SupervisorWire approval submission sequence replies exactly
+c-accepted-not-expected: fails; FAIL source_role_submission_accepted: role 1 (101) submits its read-domain-5 approval: APPROVAL_ACCEPTED, no containment
+c-refused-not-expected: fails; FAIL other_role_submission_refused: role 2 (102) sends principal 101's approval: APPROVAL_REFUSED

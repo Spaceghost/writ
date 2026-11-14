@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorApproval.bend
++++ b/hosts/linux/monitor/SupervisorApproval.bend
+@@ -93,7 +93,7 @@
+ # The words after the manifest must be exactly the sixteen fixed fields.
+ def tail_parts(head: Head, objects: T.Objects, +rest: +List<U32>) -> PartsRead:
+   match rest:
+-    case +dobj <> +dver <> a <> b <> c <> d <> e <> f <> g <> h <> +kind <> +output <> +wdomain <> +subject <> +rights <> +until <> []:
++    case +dobj <> +dver <> a <> b <> c <> d <> e <> f <> g <> h <> +kind <> +output <> +wdomain <> +subject <> +rights <> +until <> _:
+       with_kind(kind_of(kind), head, objects, object_version(dobj, dver), T.CodeId{a, b, c, d, e, f, g, h},
+         output, wdomain, subject, rights, until)
+     case _: PartsLength{}

@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/LinuxHost.bend
++++ b/hosts/linux/monitor/LinuxHost.bend
+@@ -731,7 +731,7 @@
+         lineage, phase, JA.NoJoint{}}} Iss.Changed{issuer, id}:
+       SubmitAccepted{State{p, records, time, JA.Joint{issuer, rendezvous, frontend, transfer,
+         negotiation, context, lineage, phase, JA.NoJoint{}}}, id}
+-    case _ Iss.Rejected{_, _}: SubmitRefused{state}
++    case _ Iss.Rejected{_, _}: SubmitContained{contain_state(state)}
+     case _ _: SubmitContained{contain_state(state)}
+ 
+ def joint_submit_open(open: Bool, +state: State, +issuer: Iss.State, +from: Iss.Principal,

@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/LinuxHost.bend
++++ b/hosts/linux/monitor/LinuxHost.bend
+@@ -720,7 +720,7 @@
+ 
+ def submit_entry(+issuer: Iss.State, +from: Iss.Principal, approval: Iss.Approval, +now: Nat) -> Iss.Change:
+   match approval:
+-    case Iss.SourceEntry{source}: Iss.submit_source(issuer, Iss.revision(issuer), from, source, now)
++    case Iss.SourceEntry{+source}: Iss.submit_source(issuer, Iss.revision(issuer), Iss.SourceApproval.issuer(source), source, now)
+     case Iss.WriteEntry{write}: Iss.submit_write(issuer, Iss.revision(issuer), from, write, now)
+ 
+ # Retains the issuer a submission produced; every other joint component,
