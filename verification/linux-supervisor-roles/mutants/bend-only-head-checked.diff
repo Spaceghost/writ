@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorRoleLaunch.bend
++++ b/hosts/linux/monitor/SupervisorRoleLaunch.bend
+@@ -34,7 +34,7 @@
+ def is_bound(bound: Bound, +index: Nat) -> Bool:
+   match bound:
+     case NoBound{}: False{}
+-    case Bound{i, rest}: Nat.is_eq(i, index) || is_bound(rest, index)
++    case Bound{i, rest}: Nat.is_eq(i, index)
+ 
+ def admit_fresh(again: Bool, +bound: Bound, +index: Nat) -> Admission:
+   match again:

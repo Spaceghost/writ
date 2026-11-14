@@ -1205,8 +1205,8 @@ owned-process test passes 41 cases; 19 of 21 C mutants fail, and the two
 survivors are reviewed only. The suite output differs from `ddc51b99` only by
 the new checks, the native CPU run is identical, and the existing-law proof
 passed with `--verdict`. File facts do not authenticate an operator, the issuer
-is still the synthetic canary, role processes are still registered by the
-caller, and no host is qualified.
+is still the synthetic canary, role processes were then registered by the
+caller (later moved into the driver), and no host is qualified.
 
 The [supervisor approval record](verification/linux-supervisor-approvals/README.md)
 carries approval submission on that channel. A provisioned role's datagram
@@ -1221,8 +1221,23 @@ from `51f76edb` only by the new checks, the native CPU run is identical, and
 the existing-law proof passed with `--verdict`. The issuer is still the
 synthetic canary, the submitting role is not told the new approval's id,
 submissions have no quota, the payload bound is tested at a small maximum
-because a list near 1024 elements overflows the Genode corpus's QuickJS stack, role processes are still registered by the caller,
+because a list near 1024 elements overflows the Genode corpus's QuickJS stack, role processes were then registered by the caller,
 and no host is qualified.
+
+The [supervisor role launch record](verification/linux-supervisor-roles/README.md)
+moves channel role processes into the driver. `writ_supervisor_launch_role`
+sends `LINUXSUP1 ROLE <index>`; Bend (`SupervisorRoleLaunch.bend`) admits an
+index once, only when the provisioned role map names it, and the driver starts
+the program only after `ROLE_ADMITTED`, with the input as descriptor 0 and its
+channel end as descriptor 3. It registers the child's pidfs identity in its
+own table, which the receiver now uses; callers no longer pass a table. A
+failure to start an admitted program, or any other ROLE reply, is fail-stop.
+7 Bend checks and 54 native cases pass, all 8 Bend and 12 C mutants fail, the
+suite output differs from `e998f161` only by the new checks, the native CPU
+run is identical, the full suite passes under QuickJS with the Genode stack,
+and the existing-law proof passed with `--verdict`. The program a role runs is
+still the caller's argument, the operator is not authenticated, an exited
+role cannot be relaunched, and no host is qualified.
 
 The [linear stored-approval lookup record](verification/issuance-linear-lookup/README.md)
 replaces a quadratic duplicate scan in `Issuance.find_stored` with one pass

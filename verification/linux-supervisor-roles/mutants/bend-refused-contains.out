@@ -1,0 +1,4 @@
+PASS: SupervisorRoleLaunch admits each provisioned role index once
+PASS: SupervisorRoleLaunch refuses zero, unmapped and invalid-map indices
+PASS: SupervisorRoleLaunch refuses a second launch for a bound index
+FAIL: SupervisorWire ROLE replies exactly without containment

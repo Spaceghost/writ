@@ -1,0 +1,12 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -486,7 +486,8 @@
+ {
+     struct writ_channel_record record;
+     if (s->failed) return fail_stop(s);
+-    if (writ_channel_receive(fd, &s->roles, &record)) {
++    static const struct writ_roles none;
++    if (writ_channel_receive(fd, &none, &record)) {
+         int saved = errno;
+         if (saved == EAGAIN || saved == EPIPE) { errno = saved; return -1; }
+         return fail_stop(s);

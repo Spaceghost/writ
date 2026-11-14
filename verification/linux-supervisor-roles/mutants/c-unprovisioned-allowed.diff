@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -442,7 +442,7 @@
+                                 const char *path, char *const argv[], char *const envp[], pid_t *pid,
+                                 struct writ_owner_reply *reply)
+ {
+-    if (!s->provisioned || s->failed) { errno = EPERM; return -1; }
++    if (s->failed) { errno = EPERM; return -1; }
+     if (channel < 0 || input < 0) { errno = EBADF; return -1; }
+     if (s->role_pidfds == WRIT_CHANNEL_ROLES) { errno = ENOSPC; return -1; }
+     char frame[64];

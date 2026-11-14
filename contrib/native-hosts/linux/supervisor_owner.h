@@ -22,8 +22,10 @@
    and the record acceptable. Through this API workers are registered only
    by writ_supervisor_launch_worker, as the supervisor starts them, and only
    after PROVISIONED; the struct's fields are not an enforcement boundary.
-   Which process holds which channel role index (writ_roles_add) is still
-   the caller's registration.
+   Likewise a channel role index names only a process the supervisor
+   started with writ_supervisor_launch_role after Bend admitted that index
+   (ROLE_ADMITTED); the receiver attributes datagrams through that internal
+   table, never a caller-supplied one.
    Not established here: an authenticated operator (file ownership and mode
    are local facts), an installed issuer (the issuer the interpreter retains
    comes from its provisioning module; the only one is a synthetic test
@@ -82,7 +84,9 @@ enum writ_owner_outcome {
     WRIT_OWNER_PROVISIONED,
     WRIT_OWNER_PROVISION_REFUSED,
     WRIT_OWNER_APPROVAL_ACCEPTED,
-    WRIT_OWNER_APPROVAL_REFUSED
+    WRIT_OWNER_APPROVAL_REFUSED,
+    WRIT_OWNER_ROLE_ADMITTED,
+    WRIT_OWNER_ROLE_REFUSED
 };
 
 struct writ_owner_reply {
@@ -99,6 +103,9 @@ struct writ_supervisor {
     void *clock_context;
     size_t workers;
     struct { uint32_t worker; int pidfd; int owned; } worker[WRIT_OWNER_WORKERS];
+    struct writ_roles roles;           /* role processes this supervisor launched */
+    size_t role_pidfds;
+    int role_pidfd[WRIT_CHANNEL_ROLES];
     int provisioned;                   /* PROVISIONED was received */
     int contained;                     /* sticky: some reply required containment */
     int failed;                        /* sticky: fail-stop, nothing more is sent */
@@ -138,8 +145,33 @@ int writ_supervisor_provision(struct writ_supervisor *s, int dirfd, const char *
 int writ_supervisor_launch_worker(struct writ_supervisor *s, uint32_t worker, const char *path,
                                   char *const argv[], char *const envp[], pid_t *pid);
 
-/* Closes every pidfd the supervisor owns (launched workers). Kills and reaps
-   nothing; the registry is emptied. */
+/* Asks Bend whether a process may be started for channel role `index`
+   (LINUXSUP1 ROLE; SupervisorRoleLaunch.bend) and, only on ROLE_ADMITTED,
+   starts `path` as for writ_supervisor_launch_worker except for its
+   descriptors: `input` becomes its descriptor 0 and `channel` (its end of the
+   supervisor channel) its descriptor 3; it keeps 1 and 2 and nothing else.
+   The child's pidfs identity is then registered under `index` in the
+   supervisor's own role table, which writ_supervisor_serve_one uses. The
+   caller keeps `input` and `channel` (the child has its own copies). On
+   success, which means execve succeeded, returns the pidfd, owned by the
+   supervisor as for workers, and sets `*pid`; the caller reaps the child.
+   -1 with EPERM (not provisioned, failed) or EBADF (a negative descriptor)
+   or ENOSPC (the table is full) before anything is sent; -1 with EPERM and
+   `reply` set after ROLE_REFUSED, which is not fail-stop and starts nothing;
+   -1 on fail-stop otherwise: a reply other than a clean ROLE_ADMITTED or
+   ROLE_REFUSED (containment or an effect included), or after admission a
+   clone3 failure, a child that failed before or in execve (it is reaped;
+   errno is the child's), or a registration failure (the child is killed and
+   reaped). A bound index with no process would differ from Bend's state.
+   The admitted index stays bound for the interpreter's lifetime, even after
+   its process exits. */
+int writ_supervisor_launch_role(struct writ_supervisor *s, uint32_t index, int channel, int input,
+                                const char *path, char *const argv[], char *const envp[], pid_t *pid,
+                                struct writ_owner_reply *reply);
+
+/* Closes every pidfd the supervisor owns (launched workers and role
+   processes) and empties both tables. Kills and reaps nothing. End of life
+   only: the interpreter still counts the released role indices as bound. */
 void writ_supervisor_release(struct writ_supervisor *s);
 
 /* Forwards one classified record with a fresh clock sample. 0 when a
@@ -150,11 +182,11 @@ int writ_supervisor_control(struct writ_supervisor *s, const struct writ_channel
                             struct writ_owner_reply *reply);
 
 /* Receives one record from the enabled channel `fd` (non-blocking, see
-   writ_channel_receive) and forwards it. 0 forwarded; -1 with errno EAGAIN
+   writ_channel_receive), attributing its sender through the role processes
+   launched by writ_supervisor_launch_role, and forwards it. 0 forwarded; -1 with errno EAGAIN
    (nothing queued) or EPIPE (peer closed) without contacting the
    interpreter; -1 otherwise on fail-stop. */
-int writ_supervisor_serve_one(struct writ_supervisor *s, int fd, const struct writ_roles *roles,
-                              struct writ_owner_reply *reply);
+int writ_supervisor_serve_one(struct writ_supervisor *s, int fd, struct writ_owner_reply *reply);
 
 /* Sends one DRAIN and executes the returned StopEffects in order: SIGKILL
    through the worker's pidfd, then a wait of at most five seconds for that

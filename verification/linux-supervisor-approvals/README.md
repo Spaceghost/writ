@@ -19,7 +19,8 @@ attributed principal, but the issuer they join is still the **synthetic canary
 issuer**, with its earlier approvals and grants built in-process. The
 submitting role does not learn the new approval's id: the channel is one-way,
 and the reply goes to the driver, not to the role. Which process holds which
-role is still registered by the caller (`writ_roles_add`), the record's role
+role was still registered by the caller (`writ_roles_add`; since moved into
+the driver, see the [role launch record](../linux-supervisor-roles/README.md)), the record's role
 map is not an authenticated operator, and the clock samples are scripted.
 Registration of a grant from submitted approvals is not carried on the
 channel.
@@ -168,8 +169,10 @@ Mutant notes:
   `NotAuthority`, `Replay`, `Expired`), but no check pins which gate refused.
 - **Registration over the channel:** a grant from submitted approvals is not
   requested through the channel.
-- **Role and session binding:** role processes are still registered by the
-  caller, and no worker lifetime or session is bound to a principal (LH-011).
+- **Role and session binding:** role processes were registered by the caller
+  here (now launched by the driver, see the
+  [role launch record](../linux-supervisor-roles/README.md)), and no worker
+  lifetime or session is bound to a principal (LH-011).
 - **Operator authentication:** the role map comes from file facts, which do not
   authenticate the operator.
 - **Clock and restart:** samples are scripted; submitted approvals do not

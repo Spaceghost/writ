@@ -9,8 +9,10 @@
    expiring at 120, with the owner's clock at 110 and no role map).
    The role map comes from a provisioning record this test writes to a 0600
    file in a private directory under $TMPDIR (or /tmp): role 1 is principal
-   101, role 2 is 102, over the canary issuer root. Worker 1 is launched by
-   the driver (this binary re-executed with --worker).
+   101, role 2 is 102, over the canary issuer root. Worker 1 and the role 1
+   and role 2 processes are launched by the driver (this binary re-executed
+   with --worker or --role); a third sender is an unregistered child of the
+   test.
 
    Every process, socket and descriptor here is created by this test. It
    requests no privilege, signals only its own children (the drained worker
@@ -191,11 +193,16 @@ static _Noreturn void worker_main(void)
     for (;;) pause();
 }
 
+/* Set by role_main: the launched role process saw only what the driver
+   promises. */
+static int role_clean;
+
 /* ---- owned children ----
    Commands are one byte on a private SEQPACKET socket; the child replies 'k'
    after the send succeeded, 'e' otherwise.
      r  send revoke(5) on tx     b  send a 3-byte payload on tx
      s  send submit_source       w  send submit_write      v  send revoke(16)
+     q  'k' only in a role process whose launch checks passed
    A child with tx == -1 is a worker that only waits. */
 static void child_loop(int cmd, int tx)
 {
@@ -208,12 +215,35 @@ static void child_loop(int cmd, int tx)
         else if (op == 's') ok = send(tx, submit_source, sizeof submit_source, MSG_NOSIGNAL) == (ssize_t)sizeof submit_source;
         else if (op == 'w') ok = send(tx, submit_write, sizeof submit_write, MSG_NOSIGNAL) == (ssize_t)sizeof submit_write;
         else if (op == 'v') ok = send(tx, revoke16, sizeof revoke16, MSG_NOSIGNAL) == (ssize_t)sizeof revoke16;
+        else if (op == 'q') ok = role_clean;
         char reply = ok ? 'k' : 'e';
         if (send(cmd, &reply, 1, MSG_NOSIGNAL) != 1) _exit(2);
     }
 }
 
-/* `borrowed`: the pidfd belongs to the driver (a launched worker). */
+static int is_socket(int fd)
+{
+    struct stat st;
+    return !fstat(fd, &st) && S_ISSOCK(st.st_mode);
+}
+
+/* Re-executed role process (writ_supervisor_launch_role): its command socket
+   is descriptor 0 and its channel end descriptor 3. It records whether the
+   driver set parent-death SIGKILL and left exactly descriptors 0 to 3 with
+   sockets at 0 and 3, then serves commands; 'q' reports the result. */
+static _Noreturn void role_main(void)
+{
+    int death = 0;
+    alarm(CHILD_TIMEOUT_SECONDS);
+    role_clean = !prctl(PR_GET_PDEATHSIG, &death) && death == SIGKILL &&
+                 count_own_fds() == 4 && is_socket(0) && is_socket(3);
+    record_bytes(source_words, APPROVAL_WORDS, submit_source);
+    record_bytes(write_words, APPROVAL_WORDS, submit_write);
+    child_loop(0, 3);
+    _exit(4);
+}
+
+/* `borrowed`: the pidfd belongs to the driver (a launched worker or role). */
 struct child { int pidfd; int cmd; int borrowed; };
 
 static struct child spawn(int tx)
@@ -327,7 +357,6 @@ static struct writ_clock_sample at(uint32_t now)
 struct scenario {
     struct writ_policy policy;
     struct writ_supervisor sup;
-    struct writ_roles roles;
     struct script clock;
     int channel;
     int fake;
@@ -353,6 +382,43 @@ static struct child launch(struct writ_supervisor *sup, uint32_t worker, int *cl
     return (struct child){ pidfd, -1, 1 };
 }
 
+/* Asks the driver to launch role `index` with a fresh command socket as its
+   descriptor 0 and `channel` as its descriptor 3. On refusal or failure the
+   returned child has pidfd -1, and `*started` says whether anything still
+   holds the command socket's other end (a started process would). */
+static struct child launch_program(struct writ_supervisor *sup, uint32_t index, int channel, const char *path,
+                                   struct writ_owner_reply *r, int *started)
+{
+    char *argv[] = { "supervisor-owner-role", "--role", NULL };
+    char *envp[] = { NULL };
+    int pair[2];
+    if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, pair)) die("socketpair role");
+    pid_t pid;
+    int pidfd = writ_supervisor_launch_role(sup, index, channel, pair[1], path, argv, envp, &pid, r);
+    int saved = errno;
+    close(pair[1]);
+    if (started) {
+        char byte;
+        *started = recv(pair[0], &byte, 1, MSG_DONTWAIT) != 0;
+    }
+    if (pidfd < 0) { close(pair[0]); errno = saved; return (struct child){ -1, -1, 1 }; }
+    return (struct child){ pidfd, pair[0], 1 };
+}
+
+static struct child launch_role(struct writ_supervisor *sup, uint32_t index, int channel,
+                                struct writ_owner_reply *r, int *started)
+{
+    return launch_program(sup, index, channel, "/proc/self/exe", r, started);
+}
+
+/* Whether the role process passed its launch checks. */
+static int role_reports_clean(struct child *c)
+{
+    char op = 'q', reply = 0;
+    if (send(c->cmd, &op, 1, MSG_NOSIGNAL) != 1 || recv(c->cmd, &reply, 1, 0) != 1) return 0;
+    return reply == 'k';
+}
+
 static void begin_raw(struct scenario *s, const struct writ_clock_sample *samples, size_t count,
                       int with_fake, const char *provision)
 {
@@ -367,21 +433,25 @@ static void begin_raw(struct scenario *s, const struct writ_clock_sample *sample
     if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, ch)) die("socketpair channel");
     if (writ_channel_enable(ch[0])) die("channel enable");
     s->channel = ch[0];
-    s->a = spawn(ch[1]);
-    s->b = spawn(ch[1]);
     s->c = spawn(ch[1]);
-    close(ch[1]);
     s->w = (struct child){ -1, -1, 1 };
-    if (writ_roles_add(&s->roles, 1, s->a.pidfd) || writ_roles_add(&s->roles, 2, s->b.pidfd))
-        die("roles");
     if (provision) {
         struct writ_owner_reply r;
         s->provisioned = writ_supervisor_provision(&s->sup, records, provision, &r) == 0 &&
                          r.outcome == WRIT_OWNER_PROVISIONED && !r.contain && !r.stops;
         if (!s->provisioned) { errno = EPROTO; die("provision canary"); }
-        /* Workers can be launched only once provisioned. */
+        /* Workers and role processes can be launched only once provisioned. */
         s->w = launch(&s->sup, 1, &s->worker_clean);
+        s->a = launch_role(&s->sup, 1, ch[1], &r, NULL);
+        if (s->a.pidfd < 0) die("launch role 1");
+        s->b = launch_role(&s->sup, 2, ch[1], &r, NULL);
+        if (s->b.pidfd < 0) die("launch role 2");
+    } else {
+        /* Unprovisioned: no role can be launched, so these are unregistered. */
+        s->a = spawn(ch[1]);
+        s->b = spawn(ch[1]);
     }
+    close(ch[1]);
 }
 
 static void begin_with(struct scenario *s, const struct writ_clock_sample *samples, size_t count,
@@ -408,7 +478,7 @@ static int serve(struct scenario *s, struct writ_owner_reply *r)
 {
     struct pollfd p = { .fd = s->channel, .events = POLLIN };
     if (poll(&p, 1, 5000) != 1) die("poll channel");
-    return writ_supervisor_serve_one(&s->sup, s->channel, &s->roles, r);
+    return writ_supervisor_serve_one(&s->sup, s->channel, r);
 }
 
 static int is(const struct writ_owner_reply *r, enum writ_owner_outcome outcome, int contain, size_t stops)
@@ -423,8 +493,8 @@ static void ordered_revocation(void)
     begin(&s, samples, 4);
     struct writ_owner_reply r;
 
-    check(s.provisioned && s.sup.sequence == 1 && !s.sup.contained,
-          "protected_record_provisioned", "0600 canary record: PROVISIONED, sequence 1, no containment");
+    check(s.provisioned && s.sup.sequence == 3 && !s.sup.contained,
+          "protected_record_provisioned", "0600 canary record: PROVISIONED, then roles 1 and 2 admitted (sequence 3), no containment");
     check(s.worker_clean, "launched_worker_clean", "launched worker 1: parent-death SIGKILL, only descriptors 0-2 (an inheritable one is closed), default SIGPIPE, empty mask");
 
     command(&s.b, 'r', "B revoke");
@@ -453,8 +523,8 @@ static void ordered_revocation(void)
           "second_drain_complete", "second DRAIN: DRAIN_COMPLETE, no stop");
 
     errno = 0;
-    check(writ_supervisor_serve_one(&s.sup, s.channel, &s.roles, &r) == -1 && errno == EAGAIN &&
-          s.sup.sequence == 7 && s.clock.next == 4 && !s.sup.failed,
+    check(writ_supervisor_serve_one(&s.sup, s.channel, &r) == -1 && errno == EAGAIN &&
+          s.sup.sequence == 9 && s.clock.next == 4 && !s.sup.failed,
           "idle_channel_not_forwarded", "nothing queued: EAGAIN, no frame sent, no sample taken");
     end(&s);
 }
@@ -557,8 +627,12 @@ static void interpreter_loss(void)
     errno = 0;
     int no_launch = writ_supervisor_launch_worker(&s.sup, 2, "/proc/self/exe", argv, envp, &pid) == -1 &&
                     errno == EPERM && s.sup.workers == 1;
+    int started = 1;
+    errno = 0;
+    struct child role = launch_role(&s.sup, 3, s.channel, &r, &started);
+    no_launch = no_launch && role.pidfd < 0 && errno == EPERM && !started && s.sup.roles.count == 2;
     check(lost && writ_supervisor_drain(&s.sup, &r) == -1 && s.sup.sequence == sequence && alive(&s.w) && no_launch,
-          "interpreter_loss_fail_stop", "killed interpreter: fail-stop, later DRAIN not sent, no replay, no further launch (EPERM)");
+          "interpreter_loss_fail_stop", "killed interpreter: fail-stop, later DRAIN not sent, no replay, no further worker or role launch (EPERM)");
     end(&s);
 }
 
@@ -618,15 +692,23 @@ static int interpreter_killed(struct scenario *s)
     return dead;
 }
 
-/* Whether launching a worker is refused with EPERM (and nothing started). */
+/* Whether launching a worker or a role process is refused with EPERM,
+   nothing is sent and nothing started. */
 static int unlaunchable(struct scenario *s)
 {
     char *argv[] = { "supervisor-owner-worker", "--worker", NULL };
     char *envp[] = { NULL };
     pid_t pid;
+    uint32_t sequence = s->sup.sequence;
     errno = 0;
-    return writ_supervisor_launch_worker(&s->sup, 1, "/proc/self/exe", argv, envp, &pid) == -1 &&
-           errno == EPERM && s->sup.workers == 0;
+    int worker = writ_supervisor_launch_worker(&s->sup, 1, "/proc/self/exe", argv, envp, &pid) == -1 &&
+                 errno == EPERM && s->sup.workers == 0;
+    struct writ_owner_reply r;
+    int started = 1;
+    errno = 0;
+    struct child role = launch_role(&s->sup, 1, s->channel, &r, &started);
+    return worker && role.pidfd < 0 && errno == EPERM && !started && s->sup.roles.count == 0 &&
+           s->sup.sequence == sequence;
 }
 
 /* One refused or failed provisioning: fail-stop, `sent` replies received,
@@ -686,12 +768,12 @@ static void provisioning(void)
     int failed = serve(&s, &r) == -1 && r.outcome == WRIT_OWNER_ERROR && s.sup.sequence == 1;
     check(early && failed && s.sup.failed && interpreter_killed(&s) && unlaunchable(&s),
           "control_before_provision_fail_stop",
-          "unprovisioned: launch refused (EPERM); revoke before PROVISION: interpreter ERROR, fail-stop");
+          "unprovisioned: worker and role launch refused (EPERM), nothing sent; revoke before PROVISION: interpreter ERROR, fail-stop");
     end(&s);
 
     begin(&s, NULL, 0);
     failed = writ_supervisor_provision(&s.sup, records, "canary", &r) == -1 && r.outcome == WRIT_OWNER_ERROR &&
-             s.sup.sequence == 2;
+             s.sup.sequence == 4;
     check(failed && s.sup.failed && interpreter_killed(&s), "second_provision_fail_stop",
           "a second PROVISION: interpreter ERROR, fail-stop");
     end(&s);
@@ -724,6 +806,45 @@ static void launching(void)
     if (waitid(P_PIDFD, (id_t)pidfd, &info, WEXITED)) die("waitid missing program");
     check(info.si_code == CLD_EXITED && info.si_status == 127, "launch_exec_failure_visible",
           "execve of a missing program: the child exits 127");
+    end(&s);
+}
+
+/* Role processes exist only through Bend's admission. */
+static void role_launching(void)
+{
+    struct scenario s;
+    begin(&s, NULL, 0);
+    check(role_reports_clean(&s.a) && role_reports_clean(&s.b) && s.sup.roles.count == 2 &&
+          s.sup.roles.role[0].index == 1 && s.sup.roles.role[1].index == 2 && s.sup.role_pidfds == 2 &&
+          s.sup.role_pidfd[0] == s.a.pidfd && s.sup.role_pidfd[1] == s.b.pidfd,
+          "launched_roles_clean", "roles 1 and 2 launched after ROLE_ADMITTED and registered by pidfs identity; each has parent-death SIGKILL and only descriptors 0-3, sockets at 0 and 3");
+
+    struct writ_owner_reply r;
+    int ok = 1;
+    const uint32_t refused[] = { 1, 2, 3, 0 };
+    for (size_t i = 0; i < 4; ++i) {
+        int started = 1;
+        errno = 0;
+        struct child c = launch_role(&s.sup, refused[i], s.channel, &r, &started);
+        ok = ok && c.pidfd < 0 && errno == EPERM && r.outcome == WRIT_OWNER_ROLE_REFUSED && !r.contain &&
+             !started && s.sup.sequence == 4 + i;
+    }
+    check(ok && !s.sup.failed && !s.sup.contained && s.sup.roles.count == 2,
+          "role_launch_refused", "second launch of roles 1 and 2, unmapped role 3 and role 0: ROLE_REFUSED (EPERM), nothing started, not fail-stop");
+
+    int started = 1;
+    uint32_t sequence = s.sup.sequence;
+    errno = 0;
+    struct child c = launch_role(&s.sup, 3, -1, &r, &started);
+    check(c.pidfd < 0 && errno == EBADF && !started && s.sup.sequence == sequence && !s.sup.failed,
+          "role_launch_bad_descriptor", "negative channel descriptor: EBADF, nothing sent or started");
+
+    command(&s.c, 'r', "C revoke");
+    struct writ_owner_reply served;
+    s.clock.sample[0] = at(111);
+    s.clock.count = 1;
+    check(serve(&s, &served) == 0 && is(&served, WRIT_OWNER_CHANNEL_DENIED, 0, 0),
+          "test_spawned_sender_denied", "a process the test started itself, sharing the channel: CHANNEL_DENIED");
     end(&s);
 }
 
@@ -764,7 +885,7 @@ static int peer_fails_stop(char sender, uint32_t role_seen, int drain, const cha
     if (drain) {
         failed = writ_supervisor_drain(&s.sup, &r) == -1;
     } else {
-        if (role_seen == 3) s.roles.role[1].index = 3; /* B registered as role 3 */
+        if (role_seen == 3) s.sup.roles.role[1].index = 3; /* B registered as role 3 */
         command(from, 'r', "peer send");
         failed = serve(&s, &r) == -1;
     }
@@ -775,8 +896,49 @@ static int peer_fails_stop(char sender, uint32_t role_seen, int drain, const cha
     return ok;
 }
 
+/* A ROLE reply other than a clean ROLE_ADMITTED or ROLE_REFUSED is
+   fail-stop and starts nothing. The fake answers role 7 with SERVED, role 8
+   with ROLE_ADMITTED carrying S1 and role 9 with ROLE_ADMITTED requiring
+   containment. */
+static void peer_role_fails_stop(uint32_t index, const char *name, const char *detail)
+{
+    struct scenario s;
+    begin_with(&s, NULL, 0, 1);
+    struct writ_owner_reply r;
+    int started = 1;
+    struct child c = launch_role(&s.sup, index, s.channel, &r, &started);
+    check(c.pidfd < 0 && !started && s.sup.failed && s.sup.contained && s.sup.roles.count == 2 &&
+          interpreter_killed(&s), name, detail);
+    end(&s);
+}
+
+/* After ROLE_ADMITTED (the fake admits role 5) the program cannot be
+   executed: the call reports failure, not a pidfd, and the supervisor
+   fail-stops, since the interpreter now counts role 5 as bound. */
+static void role_exec_failure(void)
+{
+    struct scenario s;
+    begin_with(&s, NULL, 0, 1);
+    char missing[300];
+    snprintf(missing, sizeof missing, "%s/absent-program", records_path);
+    struct writ_owner_reply r;
+    int started = 1;
+    uint32_t sequence = s.sup.sequence;
+    errno = 0;
+    struct child c = launch_program(&s.sup, 5, s.channel, missing, &r, &started);
+    check(c.pidfd < 0 && errno == ENOENT && r.outcome == WRIT_OWNER_ROLE_ADMITTED && !started &&
+          s.sup.sequence == sequence + 1 && s.sup.failed && s.sup.contained && s.sup.roles.count == 2 &&
+          s.sup.role_pidfds == 2 && interpreter_killed(&s),
+          "role_exec_failure_fail_stop", "admitted role 5 whose program is missing: -1 with the child's ENOENT, child reaped, not registered, fail-stop");
+    end(&s);
+}
+
 static void malformed_peer(void)
 {
+    peer_role_fails_stop(7, "peer_role_wrong_outcome", "SERVED for ROLE: fail-stop, interpreter killed, nothing started");
+    peer_role_fails_stop(8, "peer_role_effect", "ROLE_ADMITTED with S1: fail-stop, nothing started");
+    peer_role_fails_stop(9, "peer_role_contains", "ROLE_ADMITTED requiring containment: fail-stop, nothing started");
+    role_exec_failure();
     peer_fails_stop('a', 1, 0, "peer_wrong_operation_outcome", "SERVED for CONTROL: fail-stop, interpreter killed");
     peer_fails_stop('b', 2, 0, "peer_control_effect", "control reply with S1: fail-stop, no worker signalled");
     peer_fails_stop('b', 3, 0, "peer_interpreter_error", "interpreter ERROR: fail-stop, interpreter killed");
@@ -816,6 +978,7 @@ static void boottime(void)
 int main(int argc, char **argv)
 {
     if (argc == 2 && !strcmp(argv[1], "--worker")) worker_main();
+    if (argc == 2 && !strcmp(argv[1], "--role")) role_main();
     setvbuf(stdout, NULL, _IOLBF, 0);
     alarm(TIMEOUT_SECONDS);
     if (argc != 5 || argv[1][0] != '/' || argv[2][0] != '/' || argv[3][0] != '/' || argv[4][0] != '/') {
@@ -846,6 +1009,7 @@ int main(int argc, char **argv)
     frame_formatting();
     provision_formatting();
     launching();
+    role_launching();
     provisioning();
     boottime();
     ordered_revocation();

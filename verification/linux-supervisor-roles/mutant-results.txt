@@ -1,0 +1,20 @@
+bend bound-ignored 1 | FAIL: SupervisorRoleLaunch refuses a second launch for a bound index
+bend map-ignored 1 | FAIL: SupervisorRoleLaunch refuses zero, unmapped and invalid-map indices
+bend bound-not-recorded 1 | FAIL: SupervisorRoleLaunch admits each provisioned role index once
+bend only-head-checked 1 | FAIL: SupervisorRoleLaunch refuses a second launch for a bound index
+bend admitted-not-retained 1 | FAIL: SupervisorWire ROLE replies exactly without containment
+bend refused-contains 1 | FAIL: SupervisorWire ROLE replies exactly without containment
+bend role-fields-ignored 1 | FAIL: SupervisorWire ROLE before provisioning or with extra fields stops
+bend role-unprovisioned 1 | FAIL: SupervisorWire ROLE before provisioning or with extra fields stops
+c refused-launches 1 | FAIL role_launch_refused: second launch of roles 1 and 2, unmapped role 3 and role 0: ROLE_REFUSED (EPERM), nothing started, not fail-stop
+c channel-closed 1 | FAIL launched_roles_clean: roles 1 and 2 launched after ROLE_ADMITTED and registered by pidfs identity; each has parent-death SIGKILL and only descriptors 0-3, sockets at 0 and 3
+c extra-fd-kept 1 | FAIL launched_roles_clean: roles 1 and 2 launched after ROLE_ADMITTED and registered by pidfs identity; each has parent-death SIGKILL and only descriptors 0-3, sockets at 0 and 3
+c exec-status-ignored 1 | FAIL role_exec_failure_fail_stop: admitted role 5 whose program is missing: -1 with the child's ENOENT, child reaped, not registered, fail-stop
+c contain-accepted 1 | FAIL peer_role_contains: ROLE_ADMITTED requiring containment: fail-stop, nothing started
+c caller-table-empty 1 | FAIL non_issuer_revoke_refused: role 2 (102) revoke 5: REVOKE_REFUSED, no containment, worker alive
+c not-registered 1 | FAIL launched_roles_clean: roles 1 and 2 launched after ROLE_ADMITTED and registered by pidfs identity; each has parent-death SIGKILL and only descriptors 0-3, sockets at 0 and 3
+c effect-accepted 1 | FAIL peer_role_effect: ROLE_ADMITTED with S1: fail-stop, nothing started
+c any-outcome 1 | FAIL peer_role_wrong_outcome: SERVED for ROLE: fail-stop, interpreter killed, nothing started
+c refusal-fail-stop 1 | FAIL role_launch_refused: second launch of roles 1 and 2, unmapped role 3 and role 0: ROLE_REFUSED (EPERM), nothing started, not fail-stop
+c unprovisioned-allowed 1 | FAIL control_before_provision_fail_stop: unprovisioned: worker and role launch refused (EPERM), nothing sent; revoke before PROVISION: interpreter ERROR, fail-stop
+c input-not-moved 1 | FAIL launched_roles_clean: roles 1 and 2 launched after ROLE_ADMITTED and registered by pidfs identity; each has parent-death SIGKILL and only descriptors 0-3, sockets at 0 and 3

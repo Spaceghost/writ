@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -468,7 +468,7 @@
+     ssize_t got;
+     do got = read(status[0], &error, sizeof error); while (got < 0 && errno == EINTR);
+     close(status[0]);
+-    int err = got == 0 ? writ_roles_add(&s->roles, index, pidfd) : got > 0 && error ? error : EIO;
++    int err = got == 0 ? 0 : got > 0 && error ? error : EIO;
+     if (err) {
+         (void)syscall(SYS_pidfd_send_signal, pidfd, SIGKILL, NULL, 0);
+         siginfo_t info;

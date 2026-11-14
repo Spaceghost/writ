@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -281,7 +281,7 @@
+ 
+ static int role_outcome(enum writ_owner_outcome o)
+ {
+-    return o == WRIT_OWNER_ROLE_ADMITTED || o == WRIT_OWNER_ROLE_REFUSED;
++    return 1;
+ }
+ 
+ static int drain_outcome(enum writ_owner_outcome o)

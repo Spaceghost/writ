@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorRoleLaunch.bend
++++ b/hosts/linux/monitor/SupervisorRoleLaunch.bend
+@@ -44,7 +44,7 @@
+ def admit_attributed(attribution: C.Attribution, +bound: Bound, +index: Nat) -> Admission:
+   match attribution:
+     case C.Attributed{_}: admit_fresh(is_bound(bound, index), bound, index)
+-    case C.Denied{_}: RoleRefused{RoleUnprovisioned{}}
++    case C.Denied{_}: RoleAdmitted{Bound{index, bound}}
+ 
+ # Public entry point: admit one process launch for role `index` under the
+ # provisioned `roles`, given the indices already bound.

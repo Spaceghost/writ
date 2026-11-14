@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorWire.bend
++++ b/hosts/linux/monitor/SupervisorWire.bend
+@@ -335,7 +335,7 @@
+ def role_admitted(+state: State, admission: SR.Admission) -> Step:
+   match state admission:
+     case State{owner, authority, sequence, stopped, ready, _} SR.RoleAdmitted{bound}:
+-      Step{State{owner, authority, sequence, stopped, ready, bound}, "ROLE_ADMITTED", False{}, "-"}
++      Step{State{owner, authority, sequence, stopped, ready, SR.NoBound{}}, "ROLE_ADMITTED", False{}, "-"}
+     case _ SR.RoleRefused{_}:
+       Step{state, "ROLE_REFUSED", False{}, "-"}
+ 

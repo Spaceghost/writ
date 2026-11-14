@@ -259,9 +259,11 @@ consistent record whose issuer root equals the retained issuer's. That root
 match is a consistency check, not authority: the canary root is public, so the
 file facts are the only gate, and they do not authenticate the operator. Through
 the driver's API, workers are registered only as it launches them, after
-provisioning. Which process holds which role index is still registered by the
-caller, so binding each worker lifetime and session to its principal (LH-011)
-remains open. The issuer itself is still the synthetic canary with its
+provisioning, and role processes only as it launches them after Bend admits
+their provisioned index (`SupervisorRoleLaunch.bend`); the receiver attributes
+through that table. The program a role runs is still the caller's argument,
+so binding each role to a trusted program, and each worker lifetime and
+session to its principal (LH-011), remains open. The issuer itself is still the synthetic canary with its
 in-process approvals, the submitting role is not told a new approval's id, and
 the clock samples are scripted. A deployment must serialize every relevant
 authority/policy change or treat the owner as incomplete.

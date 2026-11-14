@@ -260,9 +260,31 @@ are, at the model and owned-process boundary only:
 
 For LH-012 it adds `SupervisorOwner a submitted approval is revocable only by
 its issuer role` and the native `submitted_approval_revoked`. The issuer is
-still the synthetic canary, the submitting role is not told the new id, grant
-registration is not carried on the channel, and role processes are still
-registered by the caller.
+still the synthetic canary, the submitting role is not told the new id, and grant
+registration is not carried on the channel.
+
+Role processes are now launched by the driver
+([role launch record](../../verification/linux-supervisor-roles/README.md)):
+Bend admits each provisioned role index once (`SupervisorRoleLaunch.bend`),
+the driver starts a process only after `ROLE_ADMITTED`, and the receiver
+attributes through the driver's own table of those processes. For LH-011 this
+binds each role index to one exact process lifetime the supervisor started.
+It does not bind a trusted program (the program is the caller's argument),
+authenticate the administrator, or bind a worker session, so LH-011 stays a
+reviewed-only gap. The checks are:
+
+- Bend checks in [SupervisorRoleLaunchTests.bend](../../hosts/linux/monitor/SupervisorRoleLaunchTests.bend):
+  `SupervisorRoleLaunch admits each provisioned role index once`,
+  `SupervisorRoleLaunch refuses zero, unmapped and invalid-map indices`,
+  `SupervisorRoleLaunch refuses a second launch for a bound index`,
+  `SupervisorWire ROLE replies exactly without containment`,
+  `SupervisorWire a contained owner still admits a role launch for cleanup`,
+  `SupervisorWire ROLE before provisioning or with extra fields stops` and
+  `SupervisorWire ROLE uses the role map installed by PROVISION`.
+- Native cases: `launched_roles_clean`, `role_launch_refused`,
+  `role_launch_bad_descriptor`, `test_spawned_sender_denied`,
+  `peer_role_wrong_outcome`, `peer_role_effect`, `peer_role_contains` and
+  `role_exec_failure_fail_stop`.
 
 ## Synthetic Rendezvous owner (LH-012, LH-013, LH-015 and LH-016)
 

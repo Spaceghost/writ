@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -149,7 +149,7 @@
+            channel end or any other supervisor descriptor. Marking them
+            close-on-exec (rather than closing) keeps `status` open until a
+            successful execve. */
+-        if (syscall(SYS_close_range, 4u, ~0u, CLOSE_RANGE_CLOEXEC)) child_failed(status);
++        if (syscall(SYS_close_range, 5u, ~0u, CLOSE_RANGE_CLOEXEC)) child_failed(status);
+     } else if (syscall(SYS_close_range, 3u, ~0u, 0u)) {
+         _exit(127);
+     }

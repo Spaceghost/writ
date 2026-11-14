@@ -1,0 +1,2 @@
+PASS: SupervisorRoleLaunch admits each provisioned role index once
+FAIL: SupervisorRoleLaunch refuses zero, unmapped and invalid-map indices

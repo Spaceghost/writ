@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -450,7 +450,7 @@
+     if (used <= 0 || (size_t)used >= sizeof frame) return fail_stop(s);
+     if (call(s, frame, (size_t)used, reply, role_outcome)) return -1;
+     /* ROLE never requires containment and never carries an effect. */
+-    if (reply->stops || reply->contain) return fail_stop(s);
++    if (reply->contain) return fail_stop(s);
+     if (reply->outcome == WRIT_OWNER_ROLE_REFUSED) { errno = EPERM; return -1; }
+     /* Admitted: from here a failure to start the program or to register it
+        leaves Bend believing the index bound, so it is fail-stop. */

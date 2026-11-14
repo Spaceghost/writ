@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorWire.bend
++++ b/hosts/linux/monitor/SupervisorWire.bend
+@@ -352,6 +352,8 @@
+   match request:
+     case Request{"PROVISION", mode, links, owner, euid, argument}:
+       provision(state, mode, links, owner, euid, argument)
++    case Request{"ROLE", index, 0, 0, 0, "-"}:
++      role(state, index)
+     case _:
+       failed(state, "ERROR")
+ 

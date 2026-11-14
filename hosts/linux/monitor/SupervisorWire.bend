@@ -1,6 +1,7 @@
 import Base
 import ./SupervisorOwner.bend as O
 import ./SupervisorProvision.bend as SP
+import ./SupervisorRoleLaunch.bend as SR
 import ./LocalChannel.bend as C
 import ./LinuxHost.bend as LH
 import ../../../HostPrimitives.bend as P
@@ -39,8 +40,14 @@ import ../../../contrib/rclone/bend/Wire.bend as Wire
 #   FRAME   0 0 <clock> <now> <payload hex>                one monitor frame
 #   DRAIN   0 0 0 0 -                                      supervisor cleanup
 #   PROVISION <mode> <links> <owner> <euid> <record hex>   protected bootstrap
+#   ROLE    <index> 0 0 0 -                                may a role process start
 # For PROVISION the four numeric fields are the configuration file's
 # `st_mode`, `st_nlink`, `st_uid` and the supervisor's effective user ID.
+# ROLE replies `ROLE_ADMITTED` when the provisioned role map names `index` and
+# no process was admitted for it before (`SupervisorRoleLaunch`), and
+# `ROLE_REFUSED` otherwise; neither requires containment or stops the
+# interpreter, and neither takes a clock sample. The driver launches a role
+# process only after `ROLE_ADMITTED`.
 # Payload hex is lowercase, at most `max_payload()` bytes (the receiver's
 # maximum record), and may be empty.
 #
@@ -61,7 +68,8 @@ import ../../../contrib/rclone/bend/Wire.bend as Wire
 # supplies one, holding the canary issuer and no role map.
 
 type State is Data:
-  State{owner: O.Owner, authority: P.AdmissionAuthority, sequence: U32, stopped: Bool, ready: Bool}
+  State{owner: O.Owner, authority: P.AdmissionAuthority, sequence: U32, stopped: Bool, ready: Bool,
+    bound: SR.Bound}
 
 type Request is Data:
   Request{operation: String, verdict: U32, role: U32, clock: U32, now: U32, argument: String}
@@ -78,12 +86,12 @@ def max_requests() -> U32:
 # Exported for tests: the interpreter state for an owner whose role map is
 # already in place. Constructing it is not authentication.
 def provisioned(owner: O.Owner, authority: P.AdmissionAuthority) -> State:
-  State{owner, authority, 0, False{}, True{}}
+  State{owner, authority, 0, False{}, True{}, SR.NoBound{}}
 
 # Public entry point for a provisioning module: an interpreter over `state`
 # with no role map, which accepts only `PROVISION` first.
 def unprovisioned(state: LH.State, authority: P.AdmissionAuthority) -> State:
-  State{O.Owner{C.NoRoles{}, state}, authority, 0, False{}, False{}}
+  State{O.Owner{C.NoRoles{}, state}, authority, 0, False{}, False{}, SR.NoBound{}}
 
 def next(step: Step) -> State:
   match step:
@@ -91,11 +99,11 @@ def next(step: Step) -> State:
 
 def ready(state: State) -> Bool:
   match state:
-    case State{_, _, _, _, +ready}: ready
+    case State{_, _, _, _, +ready, _}: ready
 
 def sequence(state: State) -> U32:
   match state:
-    case State{_, _, +sequence, _, _}: sequence
+    case State{_, _, +sequence, _, _, _}: sequence
 
 def contain_digit(contain: Bool) -> String:
   match contain:
@@ -109,15 +117,16 @@ def reply(step: Step) -> String:
 
 def stop(state: State) -> State:
   match state:
-    case State{owner, authority, sequence, _, ready}: State{owner, authority, sequence, True{}, ready}
+    case State{owner, authority, sequence, _, ready, bound}: State{owner, authority, sequence, True{}, ready, bound}
 
 def advance(state: State) -> State:
   match state:
-    case State{owner, authority, sequence, stopped, ready}: State{owner, authority, (sequence + 1 : U32), stopped, ready}
+    case State{owner, authority, sequence, stopped, ready, bound}:
+      State{owner, authority, (sequence + 1 : U32), stopped, ready, bound}
 
 def stopped(state: State) -> Bool:
   match state:
-    case State{_, _, _, +stopped, _}: stopped
+    case State{_, _, _, +stopped, _, _}: stopped
 
 def failed(state: State, outcome: String) -> Step:
   Step{stop(state), outcome, True{}, "-"}
@@ -269,17 +278,17 @@ def outcome_name(result: O.OwnerResult) -> String:
 
 def stepped(state: State, +owned: O.OwnerStep) -> Step:
   match state owned:
-    case State{_, authority, sequence, stopped, ready} O.OwnerStep{owner, +result}:
-      Step{State{owner, authority, sequence, stopped, ready}, outcome_name(result),
+    case State{_, authority, sequence, stopped, ready, bound} O.OwnerStep{owner, +result}:
+      Step{State{owner, authority, sequence, stopped, ready, bound}, outcome_name(result),
         O.requires_containment(result), render_effects(O.effects(result))}
 
 def owner_of(+state: State) -> O.Owner:
   match state:
-    case State{owner, _, _, _, _}: owner
+    case State{owner, _, _, _, _, _}: owner
 
 def authority_of(+state: State) -> P.AdmissionAuthority:
   match state:
-    case State{_, authority, _, _, _}: authority
+    case State{_, authority, _, _, _, _}: authority
 
 def apply(+state: State, event: O.OwnerInput, sample: LH.ClockSample) -> Step:
   stepped(state, O.step(owner_of(state), event, sample, authority_of(state)))
@@ -307,8 +316,8 @@ def frame(+state: State, clock: U32, now: U32, argument: String) -> Step:
 
 def adopted(+state: State, adoption: SP.Adoption) -> Step:
   match state adoption:
-    case State{_, authority, sequence, stopped, _} SP.Adopted{owner}:
-      Step{State{owner, authority, sequence, stopped, True{}}, "PROVISIONED", False{}, "-"}
+    case State{_, authority, sequence, stopped, _, bound} SP.Adopted{owner}:
+      Step{State{owner, authority, sequence, stopped, True{}, bound}, "PROVISIONED", False{}, "-"}
     case _ SP.NotAdopted{_}:
       failed(state, "PROVISION_REFUSED")
 
@@ -322,6 +331,21 @@ def provision_read(+state: State, facts: SP.ConfigFacts, bytes: Maybe<&2, +List<
 
 def provision(+state: State, mode: U32, links: U32, owner: U32, euid: U32, argument: String) -> Step:
   provision_read(state, SP.ConfigFacts{mode, links, owner, euid}, payload(argument))
+
+def role_admitted(+state: State, admission: SR.Admission) -> Step:
+  match state admission:
+    case State{owner, authority, sequence, stopped, ready, _} SR.RoleAdmitted{bound}:
+      Step{State{owner, authority, sequence, stopped, ready, bound}, "ROLE_ADMITTED", False{}, "-"}
+    case _ SR.RoleRefused{_}:
+      Step{state, "ROLE_REFUSED", False{}, "-"}
+
+def bound_of(+state: State) -> SR.Bound:
+  match state:
+    case State{_, _, _, _, _, bound}: bound
+
+# Whether the driver may launch a process for role `index` (SupervisorRoleLaunch).
+def role(+state: State, +index: U32) -> Step:
+  role_admitted(state, SR.admit(O.Owner.roles(owner_of(state)), bound_of(state), U32.to_nat(index)))
 
 # Before provisioning only PROVISION is accepted.
 def first(+state: State, request: Request) -> Step:
@@ -340,6 +364,8 @@ def command(+state: State, request: Request) -> Step:
       frame(state, clock, now, argument)
     case Request{"DRAIN", 0, 0, 0, 0, "-"}:
       apply(state, O.Drain{}, LH.UnavailableClock{})
+    case Request{"ROLE", index, 0, 0, 0, "-"}:
+      role(state, index)
     case _:
       failed(state, "ERROR")
 

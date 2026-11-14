@@ -32,7 +32,9 @@ authority: the canary root is public, so anyone can build a matching record,
 and the file facts are the only gate. File ownership and mode are local facts.
 They do not authenticate the operator who wrote the record, and any process
 running as the supervisor's user can rewrite it. Which process holds which
-role index is still registered by the caller (`writ_roles_add`). Clock samples
+role index was then still registered by the caller (`writ_roles_add`); the
+driver now launches role processes itself, see the
+[role launch record](../linux-supervisor-roles/README.md). Clock samples
 are still scripted.
 
 ## What changed
@@ -175,9 +177,10 @@ Mutant notes:
   approvals and grants the issuer holds are the synthetic canary's. Approval
   submission through the channel was added later; see the
   [approval record](../linux-supervisor-approvals/README.md).
-- **Role and session binding:** the channel's role processes are still
-  registered by the caller (`writ_roles_add`), not launched by the driver, and
-  no worker lifetime or session is bound to a principal (LH-011).
+- **Role and session binding:** at this record the channel's role processes
+  were registered by the caller (`writ_roles_add`); the
+  [role launch record](../linux-supervisor-roles/README.md) moves that into
+  the driver. No worker lifetime or session is bound to a principal (LH-011).
 - **Roles sharing a principal:** two role indices may name the same
   principal. The profile allows one person to hold both roles when both were
   deliberately provisioned.

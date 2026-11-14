@@ -13,6 +13,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -37,6 +38,8 @@ static const char *const outcome_names[] = {
     [WRIT_OWNER_PROVISION_REFUSED] = "PROVISION_REFUSED",
     [WRIT_OWNER_APPROVAL_ACCEPTED] = "APPROVAL_ACCEPTED",
     [WRIT_OWNER_APPROVAL_REFUSED] = "APPROVAL_REFUSED",
+    [WRIT_OWNER_ROLE_ADMITTED] = "ROLE_ADMITTED",
+    [WRIT_OWNER_ROLE_REFUSED] = "ROLE_REFUSED",
 };
 
 struct writ_clock_sample writ_clock_boottime(void *unused)
@@ -78,11 +81,16 @@ static void register_worker(struct writ_supervisor *s, uint32_t worker, int pidf
     ++s->workers;
 }
 
+/* End of life only: the interpreter still counts released role indices as
+   bound, so serving after release would see those processes as unknown. */
 void writ_supervisor_release(struct writ_supervisor *s)
 {
     for (size_t i = 0; i < s->workers; ++i)
         if (s->worker[i].owned) close(s->worker[i].pidfd);
     s->workers = 0;
+    for (size_t i = 0; i < s->role_pidfds; ++i) close(s->role_pidfd[i]);
+    s->role_pidfds = 0;
+    memset(&s->roles, 0, sizeof s->roles);
 }
 
 #ifdef WRIT_OWNER_TESTING
@@ -95,25 +103,81 @@ int writ_supervisor_add_worker(struct writ_supervisor *s, uint32_t worker, int p
 }
 #endif
 
-/* In the child between clone3 and execve: only async-signal-safe calls.
-   Every signal is still blocked (see launch), so no handler inherited from
-   the supervisor runs before the dispositions are reset. */
-static _Noreturn void exec_worker(pid_t parent, const char *path, char *const argv[], char *const envp[])
+#ifndef CLOSE_RANGE_CLOEXEC
+#define CLOSE_RANGE_CLOEXEC (1u << 2)
+#endif
+
+/* The child's descriptors. A worker keeps only 0 to 2. A role process gets
+   `input` as descriptor 0 and `channel` (its end of the supervisor channel)
+   as descriptor 3, keeps 1 and 2, and nothing else. Both are first copied
+   above 3 so that neither dup2 overwrites the other's source. `status` is
+   the write end of a close-on-exec pipe: a role child that fails before
+   execve writes its errno there, and a successful execve closes it. */
+struct child_fds { int input, channel, status; };
+
+static _Noreturn void child_failed(int status)
 {
+    int error = errno;
+    if (status >= 0) (void)write(status, &error, sizeof error);
+    _exit(127);
+}
+
+/* In the child between clone3 and execve: only async-signal-safe calls.
+   Every signal is still blocked (see spawn_child), so no handler inherited
+   from the supervisor runs before the dispositions are reset. */
+static _Noreturn void exec_child(pid_t parent, const char *path, char *const argv[], char *const envp[],
+                                 const struct child_fds *fds)
+{
+    int status = -1;
+    if (fds && (status = fcntl(fds->status, F_DUPFD_CLOEXEC, 4)) < 0) child_failed(fds->status);
     struct sigaction dfl;
     memset(&dfl, 0, sizeof dfl);
     dfl.sa_handler = SIG_DFL;
     for (int sig = 1; sig < NSIG; ++sig) (void)sigaction(sig, &dfl, NULL);
-    /* A worker must not outlive the supervisor thread that launched it. */
-    if (prctl(PR_SET_PDEATHSIG, SIGKILL) || getppid() != parent) _exit(127);
+    /* A worker or role process must not outlive the supervisor thread that
+       launched it. */
+    if (prctl(PR_SET_PDEATHSIG, SIGKILL)) child_failed(status);
+    if (getppid() != parent) { errno = ESRCH; child_failed(status); }
     sigset_t none;
     sigemptyset(&none);
-    if (sigprocmask(SIG_SETMASK, &none, NULL)) _exit(127);
-    /* The worker must not inherit the channel, the interpreter's pipes or
-       any other supervisor descriptor. */
-    if (syscall(SYS_close_range, 3u, ~0u, 0u)) _exit(127);
+    if (sigprocmask(SIG_SETMASK, &none, NULL)) child_failed(status);
+    if (fds) {
+        int input = fcntl(fds->input, F_DUPFD, 4);
+        int channel = fcntl(fds->channel, F_DUPFD, 4);
+        if (input < 0 || channel < 0 || dup2(input, 0) != 0 || dup2(channel, 3) != 3) child_failed(status);
+        /* The child must not inherit the interpreter's pipes, another role's
+           channel end or any other supervisor descriptor. Marking them
+           close-on-exec (rather than closing) keeps `status` open until a
+           successful execve. */
+        if (syscall(SYS_close_range, 4u, ~0u, CLOSE_RANGE_CLOEXEC)) child_failed(status);
+    } else if (syscall(SYS_close_range, 3u, ~0u, 0u)) {
+        _exit(127);
+    }
     execve(path, argv, envp);
-    _exit(127);
+    child_failed(status);
+}
+
+/* clone3 with every signal blocked in the caller across it; returns the
+   child's pid with `*pidfd` set, or -1 with errno. */
+static long spawn_child(const char *path, char *const argv[], char *const envp[],
+                        const struct child_fds *fds, int *pidfd)
+{
+    sigset_t all, old;
+    sigfillset(&all);
+    if (sigprocmask(SIG_SETMASK, &all, &old)) return -1;
+    pid_t parent = getpid();
+    *pidfd = -1;
+    struct clone_args args;
+    memset(&args, 0, sizeof args);
+    args.flags = CLONE_PIDFD;
+    args.pidfd = (uint64_t)(uintptr_t)pidfd;
+    args.exit_signal = SIGCHLD;
+    long child = syscall(SYS_clone3, &args, sizeof args);
+    if (child == 0) exec_child(parent, path, argv, envp, fds);
+    int saved = errno;
+    (void)sigprocmask(SIG_SETMASK, &old, NULL);
+    errno = saved;
+    return child;
 }
 
 int writ_supervisor_launch_worker(struct writ_supervisor *s, uint32_t worker, const char *path,
@@ -123,21 +187,9 @@ int writ_supervisor_launch_worker(struct writ_supervisor *s, uint32_t worker, co
        owner that could ever stop the worker. */
     if (!s->provisioned || s->failed) { errno = EPERM; return -1; }
     if (worker_room(s, worker)) return -1;
-    sigset_t all, old;
-    sigfillset(&all);
-    if (sigprocmask(SIG_SETMASK, &all, &old)) return -1;
-    pid_t parent = getpid();
-    int pidfd = -1;
-    struct clone_args args;
-    memset(&args, 0, sizeof args);
-    args.flags = CLONE_PIDFD;
-    args.pidfd = (uint64_t)(uintptr_t)&pidfd;
-    args.exit_signal = SIGCHLD;
-    long child = syscall(SYS_clone3, &args, sizeof args);
-    if (child == 0) exec_worker(parent, path, argv, envp);
-    int saved = errno;
-    (void)sigprocmask(SIG_SETMASK, &old, NULL);
-    if (child < 0) { errno = saved; return -1; }
+    int pidfd;
+    long child = spawn_child(path, argv, envp, NULL, &pidfd);
+    if (child < 0) return -1;
     register_worker(s, worker, pidfd, 1);
     *pid = (pid_t)child;
     return pidfd;
@@ -225,6 +277,11 @@ static int control_outcome(enum writ_owner_outcome o)
            o == WRIT_OWNER_APPROVAL_ACCEPTED || o == WRIT_OWNER_APPROVAL_REFUSED ||
            o == WRIT_OWNER_CHANNEL_DENIED || o == WRIT_OWNER_CONTROL_UNDECODED ||
            o == WRIT_OWNER_CONTAINED;
+}
+
+static int role_outcome(enum writ_owner_outcome o)
+{
+    return o == WRIT_OWNER_ROLE_ADMITTED || o == WRIT_OWNER_ROLE_REFUSED;
 }
 
 static int drain_outcome(enum writ_owner_outcome o)
@@ -381,12 +438,55 @@ int writ_supervisor_control(struct writ_supervisor *s, const struct writ_channel
     return 0;
 }
 
-int writ_supervisor_serve_one(struct writ_supervisor *s, int fd, const struct writ_roles *roles,
-                              struct writ_owner_reply *reply)
+int writ_supervisor_launch_role(struct writ_supervisor *s, uint32_t index, int channel, int input,
+                                const char *path, char *const argv[], char *const envp[], pid_t *pid,
+                                struct writ_owner_reply *reply)
+{
+    if (!s->provisioned || s->failed) { errno = EPERM; return -1; }
+    if (channel < 0 || input < 0) { errno = EBADF; return -1; }
+    if (s->role_pidfds == WRIT_CHANNEL_ROLES) { errno = ENOSPC; return -1; }
+    char frame[64];
+    int used = snprintf(frame, sizeof frame, "LINUXSUP1\tROLE\t%" PRIu32 "\t0\t0\t0\t-\n", index);
+    if (used <= 0 || (size_t)used >= sizeof frame) return fail_stop(s);
+    if (call(s, frame, (size_t)used, reply, role_outcome)) return -1;
+    /* ROLE never requires containment and never carries an effect. */
+    if (reply->stops || reply->contain) return fail_stop(s);
+    if (reply->outcome == WRIT_OWNER_ROLE_REFUSED) { errno = EPERM; return -1; }
+    /* Admitted: from here a failure to start the program or to register it
+       leaves Bend believing the index bound, so it is fail-stop. */
+    int status[2];
+    if (pipe2(status, O_CLOEXEC)) return fail_stop(s);
+    struct child_fds fds = { input, channel, status[1] };
+    int pidfd;
+    long child = spawn_child(path, argv, envp, &fds, &pidfd);
+    int saved = errno;
+    close(status[1]);
+    if (child < 0) { close(status[0]); errno = saved; return fail_stop(s); }
+    /* End of file: execve succeeded. An errno: the child failed before or in
+       execve and has exited. */
+    int error = 0;
+    ssize_t got;
+    do got = read(status[0], &error, sizeof error); while (got < 0 && errno == EINTR);
+    close(status[0]);
+    int err = got == 0 ? writ_roles_add(&s->roles, index, pidfd) : got > 0 && error ? error : EIO;
+    if (err) {
+        (void)syscall(SYS_pidfd_send_signal, pidfd, SIGKILL, NULL, 0);
+        siginfo_t info;
+        (void)waitid(P_PIDFD, (id_t)pidfd, &info, WEXITED);
+        close(pidfd);
+        errno = err;
+        return fail_stop(s);
+    }
+    s->role_pidfd[s->role_pidfds++] = pidfd;
+    *pid = (pid_t)child;
+    return pidfd;
+}
+
+int writ_supervisor_serve_one(struct writ_supervisor *s, int fd, struct writ_owner_reply *reply)
 {
     struct writ_channel_record record;
     if (s->failed) return fail_stop(s);
-    if (writ_channel_receive(fd, roles, &record)) {
+    if (writ_channel_receive(fd, &s->roles, &record)) {
         int saved = errno;
         if (saved == EAGAIN || saved == EPIPE) { errno = saved; return -1; }
         return fail_stop(s);
