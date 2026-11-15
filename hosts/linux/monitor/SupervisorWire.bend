@@ -14,9 +14,11 @@ import ../../../contrib/rclone/bend/Wire.bend as Wire
 # provisioning module supplies `initial()`.
 #
 # Provisioning. An interpreter started from `unprovisioned` holds the owner's
-# state with no role map. Its first frame must be `PROVISION`; the role map is
-# installed only if `SupervisorProvision` accepts the configuration facts and
-# record and the record's issuer root is the retained issuer's root. A refusal
+# state with no role map and the operator key its provisioning module pins.
+# Its first frame must be `PROVISION`; the role map is installed only if
+# `SupervisorProvision` accepts the configuration facts, the record's
+# signature under that key, and the record, and the record's issuer root is
+# the retained issuer's root. No frame carries or changes the key. A refusal
 # replies `PROVISION_REFUSED` with containment and stops the interpreter, so
 # the profile stays incomplete. Any other first frame, and any later
 # `PROVISION`, is `ERROR`: a role map is installed once and never replaced.
@@ -73,7 +75,7 @@ import ../../../contrib/rclone/bend/Wire.bend as Wire
 
 type State is Data:
   State{owner: O.Owner, authority: P.AdmissionAuthority, sequence: U32, stopped: Bool, ready: Bool,
-    launches: SR.Launches}
+    launches: SR.Launches, anchor: SP.Anchor}
 
 type Request is Data:
   Request{operation: String, verdict: U32, role: U32, clock: U32, now: U32, argument: String}
@@ -90,17 +92,18 @@ def max_requests() -> U32:
 # Exported for tests: the interpreter state for an owner whose role map is
 # already in place. Constructing it is not authentication.
 def provisioned(owner: O.Owner, authority: P.AdmissionAuthority) -> State:
-  State{owner, authority, 0, False{}, True{}, SR.none()}
+  State{owner, authority, 0, False{}, True{}, SR.none(), SP.no_anchor()}
 
 # Exported for tests: a provisioned interpreter that can admit role launches
 # for `programs`, as PROVISION would install them.
 def provisioned_with(owner: O.Owner, authority: P.AdmissionAuthority, programs: SR.Programs) -> State:
-  State{owner, authority, 0, False{}, True{}, SR.provisioned(programs)}
+  State{owner, authority, 0, False{}, True{}, SR.provisioned(programs), SP.no_anchor()}
 
 # Public entry point for a provisioning module: an interpreter over `state`
-# with no role map, which accepts only `PROVISION` first.
-def unprovisioned(state: LH.State, authority: P.AdmissionAuthority) -> State:
-  State{O.Owner{C.NoRoles{}, state}, authority, 0, False{}, False{}, SR.none()}
+# with no role map, which accepts only `PROVISION` first, and only a record
+# signed by the operator key `anchor` the module pins.
+def unprovisioned(state: LH.State, authority: P.AdmissionAuthority, anchor: SP.Anchor) -> State:
+  State{O.Owner{C.NoRoles{}, state}, authority, 0, False{}, False{}, SR.none(), anchor}
 
 def next(step: Step) -> State:
   match step:
@@ -108,11 +111,11 @@ def next(step: Step) -> State:
 
 def ready(state: State) -> Bool:
   match state:
-    case State{_, _, _, _, +ready, _}: ready
+    case State{_, _, _, _, +ready, _, _}: ready
 
 def sequence(state: State) -> U32:
   match state:
-    case State{_, _, +sequence, _, _, _}: sequence
+    case State{_, _, +sequence, _, _, _, _}: sequence
 
 def contain_digit(contain: Bool) -> String:
   match contain:
@@ -126,16 +129,17 @@ def reply(step: Step) -> String:
 
 def stop(state: State) -> State:
   match state:
-    case State{owner, authority, sequence, _, ready, bound}: State{owner, authority, sequence, True{}, ready, bound}
+    case State{owner, authority, sequence, _, ready, bound, anchor}:
+      State{owner, authority, sequence, True{}, ready, bound, anchor}
 
 def advance(state: State) -> State:
   match state:
-    case State{owner, authority, sequence, stopped, ready, bound}:
-      State{owner, authority, (sequence + 1 : U32), stopped, ready, bound}
+    case State{owner, authority, sequence, stopped, ready, bound, anchor}:
+      State{owner, authority, (sequence + 1 : U32), stopped, ready, bound, anchor}
 
 def stopped(state: State) -> Bool:
   match state:
-    case State{_, _, _, +stopped, _, _}: stopped
+    case State{_, _, _, +stopped, _, _, _}: stopped
 
 def failed(state: State, outcome: String) -> Step:
   Step{stop(state), outcome, True{}, "-"}
@@ -287,17 +291,17 @@ def outcome_name(result: O.OwnerResult) -> String:
 
 def stepped(state: State, +owned: O.OwnerStep) -> Step:
   match state owned:
-    case State{_, authority, sequence, stopped, ready, bound} O.OwnerStep{owner, +result}:
-      Step{State{owner, authority, sequence, stopped, ready, bound}, outcome_name(result),
+    case State{_, authority, sequence, stopped, ready, bound, anchor} O.OwnerStep{owner, +result}:
+      Step{State{owner, authority, sequence, stopped, ready, bound, anchor}, outcome_name(result),
         O.requires_containment(result), render_effects(O.effects(result))}
 
 def owner_of(+state: State) -> O.Owner:
   match state:
-    case State{owner, _, _, _, _, _}: owner
+    case State{owner, _, _, _, _, _, _}: owner
 
 def authority_of(+state: State) -> P.AdmissionAuthority:
   match state:
-    case State{_, authority, _, _, _, _}: authority
+    case State{_, authority, _, _, _, _, _}: authority
 
 def apply(+state: State, event: O.OwnerInput, sample: LH.ClockSample) -> Step:
   stepped(state, O.step(owner_of(state), event, sample, authority_of(state)))
@@ -325,17 +329,21 @@ def frame(+state: State, clock: U32, now: U32, argument: String) -> Step:
 
 def adopted(+state: State, adoption: SP.Adoption) -> Step:
   match state adoption:
-    case State{_, authority, sequence, stopped, _, _} SP.Adopted{owner, programs}:
-      Step{State{owner, authority, sequence, stopped, True{}, SR.provisioned(programs)}, "PROVISIONED", False{}, "-"}
+    case State{_, authority, sequence, stopped, _, _, anchor} SP.Adopted{owner, programs}:
+      Step{State{owner, authority, sequence, stopped, True{}, SR.provisioned(programs), anchor}, "PROVISIONED", False{}, "-"}
     case _ SP.NotAdopted{_}:
       failed(state, "PROVISION_REFUSED")
 
 def owner_state(+state: State) -> LH.State:
   O.Owner.state(owner_of(state))
 
+def anchor_of(+state: State) -> SP.Anchor:
+  match state:
+    case State{_, _, _, _, _, _, anchor}: anchor
+
 def provision_read(+state: State, facts: SP.ConfigFacts, bytes: Maybe<&2, +List<U32>>) -> Step:
   match bytes:
-    case Some{+record}: adopted(state, SP.adopt(owner_state(state), SP.install(facts, record)))
+    case Some{+record}: adopted(state, SP.adopt(owner_state(state), SP.install(anchor_of(state), facts, record)))
     case None{}: failed(state, "ERROR")
 
 def provision(+state: State, mode: U32, links: U32, owner: U32, euid: U32, argument: String) -> Step:
@@ -343,14 +351,14 @@ def provision(+state: State, mode: U32, links: U32, owner: U32, euid: U32, argum
 
 def role_admitted(+state: State, admission: SR.Admission) -> Step:
   match state admission:
-    case State{owner, authority, sequence, stopped, ready, _} SR.RoleAdmitted{launches}:
-      Step{State{owner, authority, sequence, stopped, ready, launches}, "ROLE_ADMITTED", False{}, "-"}
+    case State{owner, authority, sequence, stopped, ready, _, anchor} SR.RoleAdmitted{launches}:
+      Step{State{owner, authority, sequence, stopped, ready, launches, anchor}, "ROLE_ADMITTED", False{}, "-"}
     case _ SR.RoleRefused{_}:
       Step{state, "ROLE_REFUSED", False{}, "-"}
 
 def launches_of(+state: State) -> SR.Launches:
   match state:
-    case State{_, _, _, _, _, launches}: launches
+    case State{_, _, _, _, _, launches, _}: launches
 
 def role_facts(+state: State, +index: U32, facts: Maybe<&2, SR.ProgramFacts>) -> Step:
   match facts:

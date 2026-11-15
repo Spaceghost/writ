@@ -256,17 +256,24 @@ configuration record (`SupervisorProvision.bend`): the driver forwards the
 file's `fstat` facts and bytes, and Bend accepts only a regular, singly linked
 file owned by the supervisor's user and writable by no one else, holding a
 consistent record whose issuer root equals the retained issuer's. That root
-match is a consistency check, not authority: the canary root is public, so the
-file facts are the only gate, and they do not authenticate the operator. Through
+match is a consistency check, not authority: the canary root is public. Record
+version 3 is signed: the provisioning module pins the operator's Ed25519
+public key, and Bend verifies the record's trailing signature over a fixed
+context and the body before parsing it (`lib/Ed25519.bend`), so a process
+of the supervisor's user cannot install a record the operator key did not
+sign (it can still substitute an older signed one). The key in
+every test is the RFC 8032 TEST 1 key, whose secret is published, and a
+signature carries no freshness, so an older signed record is accepted again.
+Through
 the driver's API, workers are registered only as it launches them, after
 provisioning, and role processes only as it launches them after Bend admits
 their provisioned index (`SupervisorRoleLaunch.bend`); the receiver attributes
-through that table. The record (version 2) also pins each role's program by
+through that table. The record (version 3) also pins each role's program by
 SHA-256: the driver hashes a sealed copy of the named file and executes only
 that copy, and Bend admits it only when the file is protected and the digest
-is the pin. The record's writer is trusted rather than authenticated, so
-authenticating the administrator, and binding each worker lifetime and
-session to its principal (LH-011), remain open. The issuer itself is still the synthetic canary with its
+is the pin. Rollback to an older signed record, protecting and rotating the
+pinned key, and binding each worker lifetime and session to its principal
+(LH-011) remain open. The issuer itself is still the synthetic canary with its
 in-process approvals, the submitting role is not told a new approval's id, and
 the clock samples are scripted. A deployment must serialize every relevant
 authority/policy change or treat the owner as incomplete.

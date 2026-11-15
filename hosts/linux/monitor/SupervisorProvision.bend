@@ -6,21 +6,29 @@ import ./SupervisorOwner.bend as O
 import ./SupervisorRoleLaunch.bend as SR
 import ../../../Issuance.bend as Iss
 import ../../../Transfer.bend as T
+import ../../../lib/Ed25519.bend as Ed
 
 # Protected bootstrap provisioning for the local supervisor profile (LH-011).
 #
-# Authority direction. The operator controls the supervisor's launch and a
-# protected configuration file. The native driver opens that file without
+# Authority direction. The operator controls the supervisor's launch, which
+# includes the provisioning module that pins the operator's Ed25519 public key
+# (`Anchor`), and signs each provisioning record with the matching secret key
+# outside the supervisor. The native driver opens the record file without
 # following a symlink, reports what `fstat` says about it (`ConfigFacts`) and
-# forwards its bytes; it judges neither. This module decides:
+# forwards its bytes; it judges neither, and it never holds a key. This module
+# decides:
 #   1. whether the facts describe a file only the supervisor's own user can
 #      change (`config_fault`);
-#   2. whether the bytes are one well-formed provisioning record (`decode`);
-#   3. whether the record is internally consistent (`record_fault`): a valid,
+#   2. whether the file is at most `max_record_bytes()` bytes and ends in a
+#      signature that verifies, under the pinned key, over the signing context
+#      and every byte before it (`signature_fault`, lib/Ed25519.bend). Nothing
+#      in the record is parsed before this;
+#   3. whether the signed bytes are one well-formed provisioning record (`decode`);
+#   4. whether the record is internally consistent (`record_fault`): a valid,
 #      nonempty role map whose every principal is an authority in the record's
 #      own directory, unambiguous placements, and exactly one program digest
 #      for each role and none for anything else;
-#   4. whether the record's issuer root (live stamp, directory, placements)
+#   5. whether the record's issuer root (live stamp, directory, placements)
 #      is exactly the root of the issuer the owner retains (`adopt`).
 # Only then does the role map become the owner's, and the program digests the
 # wire's launch admission (`SupervisorRoleLaunch`). Nothing else installs
@@ -30,16 +38,23 @@ import ../../../Transfer.bend as T
 # (SupervisorWire) then stops the interpreter, so no control message is ever
 # attributed against a map that was not adopted.
 #
-# Not established. File facts are local observations: owner, mode and link
-# count do not authenticate the operator who wrote the file, and a process
-# running as the supervisor's user can rewrite it. The issuer that runs is still
-# the synthetic canary issuer grown from this root; approvals do not yet
-# arrive through the channel.
+# What the signature establishes. Only a holder of the operator's secret key
+# can choose a role map, a directory, placements or role programs; a process
+# running as the supervisor's user that rewrites the file produces a record
+# that is refused (`SignatureInvalid`). The file facts are still required.
+#
+# Not established. The pinned key is as trustworthy as the provisioning module
+# the operator launches; nothing here protects or rotates it. A signature has
+# no freshness: an older record signed by the same key verifies again, so a
+# rollback to a previously signed record is not detected. The issuer that runs
+# is still the synthetic canary issuer grown from this root.
 #
 # --- Record layout ---------------------------------------------------------------
 #
-# Little-endian U32 words, as the control codec (SupervisorOwner):
-#   version (2)
+# The file is the record body followed by a 64-byte Ed25519 signature (RFC
+# 8032) over `signing_context()` followed by the body. The body is
+# little-endian U32 words, as the control codec (SupervisorOwner):
+#   version (3)
 #   live stamp: graph, policy, authority
 #   role count R, then R x (role index, principal)
 #   authority count A, then A x (kind, principal, domain)
@@ -48,10 +63,13 @@ import ../../../Transfer.bend as T
 #       kind 1 SourceAt (read domain), 2 DestinationAt (write domain)
 #   program count G, then G x (role index, 8 digest words)
 #       the SHA-256 of the program that role runs, as big-endian words
-# Nothing may follow the programs. Version 1 (no programs) is refused. At most `max_record_bytes()` bytes. A
+# Nothing may follow the programs. Versions 1 (no programs) and 2 (unsigned)
+# are refused. At most `max_record_bytes()` bytes with the signature. A
 # principal is never 0.
-# Check order: too long -> RecordTooLong; a byte above 255 -> RecordRange; a
-# remainder of bytes -> RecordMisaligned; version -> RecordVersion; a section
+# Check order: too long -> RecordTooLong; a byte above 255 -> RecordRange;
+# fewer bytes than a signature, or a signature that does not verify ->
+# SignatureInvalid; then, in the signed body: a remainder of bytes ->
+# RecordMisaligned; version -> RecordVersion; a section
 # shorter than its count, or trailing words -> RecordLength; an unknown kind ->
 # RecordKind; a zero principal -> RecordZero.
 
@@ -80,6 +98,12 @@ type ProvisionError is Data:
   ProgramsInvalid{}
   NoIssuer{}
   IssuerMismatch{}
+  SignatureInvalid{}
+
+# The operator's Ed25519 public key (32 bytes), pinned by the provisioning
+# module the operator launches. It is never read from the record or a frame.
+type Anchor is Data:
+  Anchor{key: +List<U32>}
 
 type Record is Data:
   Record{live: T.Stamp, roles: C.RoleMap, directory: Iss.Authorities, placements: Iss.Placements,
@@ -100,10 +124,29 @@ type Adoption is Data:
   NotAdopted{reason: ProvisionError}
 
 def record_version() -> U32:
-  2
+  3
 
+# The whole file: body and signature.
 def max_record_bytes() -> Nat:
   4096n
+
+def signature_bytes() -> Nat:
+  64n
+
+# The body alone.
+def max_body_bytes() -> Nat:
+  Nat.sub(max_record_bytes(), signature_bytes())
+
+# ASCII "WRIT-LINUXSUP1-RECORD": signed before the body, so a signature made
+# for this record cannot be presented as a signature over any other message
+# that the same key signs with a different context.
+def signing_context() -> +List<U32>:
+  [87, 82, 73, 84, 45, 76, 73, 78, 85, 88, 83, 85, 80, 49, 45, 82, 69, 67, 79, 82, 68]
+
+# An anchor that authenticates nothing (no 32-byte key verifies under it),
+# for interpreters that are never provisioned from a record.
+def no_anchor() -> Anchor:
+  Anchor{[]}
 
 # --- Configuration facts ------------------------------------------------------------
 
@@ -298,9 +341,11 @@ def record_bounded(within: Bool, +bytes: +List<U32>) -> RecordRead:
 def decode_bounded(+bytes: +List<U32>, maximum: Nat) -> RecordRead:
   record_bounded(LH.frame_within(maximum, bytes), bytes)
 
-# Public entry point: decode one record (see the layout above).
+# Exported implementation helper (and for tests): decode one record body (see
+# the layout above). It authenticates nothing; `install` calls it only on
+# signed bytes.
 def decode(+bytes: +List<U32>) -> RecordRead:
-  decode_bounded(bytes, max_record_bytes())
+  decode_bounded(bytes, max_body_bytes())
 
 # --- Consistency -------------------------------------------------------------------
 
@@ -365,15 +410,77 @@ def install_read(read: RecordRead) -> Installed:
     case RecordRead{+record}: install_record(record_fault(record), record)
     case RecordBad{reason}: Refused{reason}
 
-def install_checked(fault: Maybe<&2, ProvisionError>, +bytes: +List<U32>) -> Installed:
+# Exported implementation helper (and for tests): the body checks `install`
+# applies once the signature has verified. It is not an entry point: bytes
+# that were not authenticated go through `install`.
+def install_body(+body: +List<U32>) -> Installed:
+  install_read(decode(body))
+
+# --- Signature -----------------------------------------------------------------------
+
+type Signed is Data:
+  Signed{body: +List<U32>}
+  Unsigned{reason: ProvisionError}
+
+def body_first(+b: U32, pair: +List<U32> & +List<U32>) -> +List<U32> & +List<U32>:
+  match pair:
+    case (front, back): (b <> front, back)
+
+# The first `count` bytes and the rest.
+def split_bytes(+count: Nat, bytes: +List<U32>) -> +List<U32> & +List<U32>:
+  match count:
+    case 0n: ([], bytes)
+    case 1n+m:
+      match bytes:
+        case []: ([], [])
+        case +b <> rest: body_first(b, split_bytes(m, rest))
+
+def signed_verified(verified: Bool, +body: +List<U32>) -> Signed:
+  match verified:
+    case True{}: Signed{body}
+    case False{}: Unsigned{SignatureInvalid{}}
+
+def signed_split(pair: +List<U32> & +List<U32>, +anchor: Anchor) -> Signed:
+  match pair anchor:
+    case (+body, +signature) Anchor{+key}:
+      signed_verified(Ed.verify(key, List.append(&2, U32, signing_context(), body), signature), body)
+
+def signed_sized(long_enough: Bool, +bytes: +List<U32>, +anchor: Anchor) -> Signed:
+  match long_enough:
+    case False{}: Unsigned{SignatureInvalid{}}
+    case True{}:
+      signed_split(split_bytes(Nat.sub(List.length(&2, U32, bytes), signature_bytes()), bytes), anchor)
+
+def signed_ranged(in_range: Bool, +bytes: +List<U32>, +anchor: Anchor) -> Signed:
+  match in_range:
+    case False{}: Unsigned{RecordRange{}}
+    case True{}: signed_sized(Nat.is_ge(List.length(&2, U32, bytes), signature_bytes()), bytes, anchor)
+
+def signed_bounded(within: Bool, +bytes: +List<U32>, +anchor: Anchor) -> Signed:
+  match within:
+    case False{}: Unsigned{RecordTooLong{}}
+    case True{}: signed_ranged(LH.all_bytes(bytes), bytes, anchor)
+
+# Exported for tests: the signed body of a file of at most `maximum` bytes, or
+# why there is none.
+def signed_body(+bytes: +List<U32>, +anchor: Anchor, maximum: Nat) -> Signed:
+  signed_bounded(LH.frame_within(maximum, bytes), bytes, anchor)
+
+def install_signed(signed: Signed) -> Installed:
+  match signed:
+    case Signed{body}: install_body(body)
+    case Unsigned{reason}: Refused{reason}
+
+def install_checked(fault: Maybe<&2, ProvisionError>, +anchor: Anchor, +bytes: +List<U32>) -> Installed:
   match fault:
     case Some{reason}: Refused{reason}
-    case None{}: install_read(decode(bytes))
+    case None{}: install_signed(signed_body(bytes, anchor, max_record_bytes()))
 
 # Public entry point: the file facts first (the bytes of a file that fails them
-# are never decoded), then the record and its consistency.
-def install(facts: ConfigFacts, +bytes: +List<U32>) -> Installed:
-  install_checked(config_fault(facts), bytes)
+# are never examined), then the signature under the pinned `anchor` (no
+# unsigned byte is parsed), then the record and its consistency.
+def install(+anchor: Anchor, facts: ConfigFacts, +bytes: +List<U32>) -> Installed:
+  install_checked(config_fault(facts), anchor, bytes)
 
 # --- Adoption ----------------------------------------------------------------------
 

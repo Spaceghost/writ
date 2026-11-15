@@ -1,0 +1,1 @@
+FAIL: Sha512 matches digests across block boundaries and refuses a value that is not a byte

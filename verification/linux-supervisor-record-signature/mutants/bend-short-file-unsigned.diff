@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -447,7 +447,7 @@
+ 
+ def signed_sized(long_enough: Bool, +bytes: +List<U32>, +anchor: Anchor) -> Signed:
+   match long_enough:
+-    case False{}: Unsigned{SignatureInvalid{}}
++    case False{}: Signed{bytes}
+     case True{}:
+       signed_split(split_bytes(Nat.sub(List.length(&2, U32, bytes), signature_bytes()), bytes), anchor)
+ 

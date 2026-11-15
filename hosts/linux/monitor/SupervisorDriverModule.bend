@@ -3,6 +3,7 @@ import ./SupervisorWire.bend as SW
 import ./SupervisorOwnerTests.bend as OT
 import ./LinuxJointOwnerTests.bend as JO
 import ./LinuxHost.bend as LH
+import ./SupervisorProvisionTests.bend as PT
 
 # SYNTHETIC TEST PROVISIONING for the native supervisor driver test only
 # (contrib/native-hosts/linux/supervisor-owner-test.c). Built with
@@ -12,18 +13,21 @@ import ./LinuxHost.bend as LH
 # `initial()` is the joint owner fixture's running stage (synthetic issuer,
 # clock at 110, the delivered worker 1 grant expiring at 120, approval 5
 # issued by principal 101) with NO role map and the fixture admission
-# authority. The driver's first frame must be `PROVISION` with a protected
-# record whose issuer root is that synthetic issuer's root; only then does the
-# record's role map attribute channel messages (SupervisorProvision). The
-# issuer itself is not installed by the record and is not authenticated; the
-# clock is not a host epoch. The protocol and every decision are
+# authority. The pinned operator key is the SYNTHETIC RFC 8032 TEST 1 public
+# key (`SupervisorProvisionTests.anchor`), whose secret is published, so the
+# test can sign its own record and nothing it signs authenticates a real
+# operator. The driver's first frame must be `PROVISION` with a protected
+# record signed under that key whose issuer root is that synthetic issuer's
+# root; only then does the record's role map attribute channel messages
+# (SupervisorProvision). The issuer itself is not installed by the record and
+# is not authenticated; the clock is not a host epoch. The protocol and every decision are
 # `SupervisorWire` / `SupervisorProvision` / `SupervisorOwner`'s.
 
 def running() -> LH.State:
   JO.stage_running(JO.owner_stages())
 
 def initial() -> SW.State:
-  SW.unprovisioned(running(), OT.authority())
+  SW.unprovisioned(running(), OT.authority(), PT.anchor())
 
 def dispatch(+state: SW.State, line: String) -> SW.Step:
   SW.dispatch(state, line)

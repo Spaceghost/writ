@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -438,7 +438,7 @@
+ def signed_verified(verified: Bool, +body: +List<U32>) -> Signed:
+   match verified:
+     case True{}: Signed{body}
+-    case False{}: Unsigned{SignatureInvalid{}}
++    case False{}: Signed{body}
+ 
+ def signed_split(pair: +List<U32> & +List<U32>, +anchor: Anchor) -> Signed:
+   match pair anchor:

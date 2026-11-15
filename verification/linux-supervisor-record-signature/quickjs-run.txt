@@ -1,0 +1,26 @@
+qjs (QuickJS 2026-06-04) --std --stack-size 524288 prelude.js+core-tests.js, where core-tests.js = bend Tests.bend -o core-tests.js
+prelude: the host replica of contrib/native-hosts/runtime/genode/core_checks.cc output shim; each line is prefixed by milliseconds since the previous line
+exit 0, wall 38.9 s (run alone; ea156773: 20.874 s)
+signature lines (ms since previous line):
+10	PASS: Sha512 matches digests across block boundaries and refuses a value that is not a byte
+0	PASS: Ed25519 field normalization leaves every limb below 2^16 at the carry edge
+653	PASS: Ed25519 encodes the base point and refuses keys above p, off the curve or with a negative zero x
+5229	PASS: Ed25519 verifies RFC 8032 TESTs 1 to 3
+5202	PASS: Ed25519 refuses an altered message, an altered R and another key
+398	PASS: Ed25519 refuses a non-canonical S, small-order keys and malformed keys and signatures
+0	Ed25519: 6 checks passed
+2006	PASS: SupervisorProvision canary record installs its role map and program digests over the canary issuer root
+0	PASS: SupervisorProvision refuses unprotected configuration facts before decoding
+7624	PASS: SupervisorProvision refuses records not signed by the pinned operator key over the signing context
+1	PASS: SupervisorProvision refuses oversized, out-of-range, misaligned and short records
+1	PASS: SupervisorProvision refuses unknown kinds, zero principals and short sections
+3	PASS: SupervisorProvision refuses invalid, empty or unbacked role maps, ambiguous placements and unpinned role programs
+5	PASS: SupervisorProvision adopts only a record whose root is the retained issuer's root
+1959	PASS: SupervisorWire provisions first, then attributes revokes through the installed map
+1928	PASS: SupervisorWire refuses unprovisioned frames, refused or unsigned records and reprovisioning
+0	SupervisorProvision: 9 checks passed
+2273	PASS: SupervisorWire ROLE uses the role map and programs installed by PROVISION
+
+0	Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+0	ALL LIBRARY TESTS PASSED
+EXIT	0

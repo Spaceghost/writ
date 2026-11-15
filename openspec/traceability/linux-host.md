@@ -298,6 +298,32 @@ reviewed-only gap. The checks are:
   `role_program_not_resolved`, `role_pinned_program_admitted` and
   `role_unregular_admitted_fail_stop`.
 
+The [record signature record](../../verification/linux-supervisor-record-signature/README.md)
+makes the record itself an operator-signed action. The provisioning module
+pins the operator's Ed25519 public key; record version 3 ends in a signature
+over a fixed context and the body, and Bend
+([lib/Ed25519.bend](../../lib/Ed25519.bend), RFC 8032 verification only)
+checks it before parsing any record byte. A process of the supervisor's user
+that rewrites the file cannot install a role map, directory, placements or
+programs the operator key did not sign, though it can substitute an older
+signed record. This is the LH-011 "authenticated administrator
+actions" step for the bootstrap record only: the key is synthetic (RFC 8032
+TEST 1) in every test, an older signed record is accepted again (no
+freshness), and worker sessions are still not bound, so LH-011 stays a
+reviewed-only gap. The checks are:
+
+- Bend: `Sha512 matches digests across block boundaries and refuses a value that is not a byte`,
+  `Ed25519 field normalization leaves every limb below 2^16 at the carry edge`,
+  `Ed25519 encodes the base point and refuses keys above p, off the curve or with a negative zero x`,
+  `Ed25519 verifies RFC 8032 TESTs 1 to 3`,
+  `Ed25519 refuses an altered message, an altered R and another key`,
+  `Ed25519 refuses a non-canonical S, small-order keys and malformed keys and signatures`,
+  `SupervisorProvision refuses records not signed by the pinned operator key over the signing context` and
+  `SupervisorWire refuses unprovisioned frames, refused or unsigned records and reprovisioning`.
+- Native cases: `protected_record_provisioned` (a signed record),
+  `unsigned_record_refused`, `rewritten_record_refused` and
+  `other_key_record_refused`.
+
 ## Synthetic Rendezvous owner (LH-012, LH-013, LH-015 and LH-016)
 
 [LinuxJointOwnerTests.bend](../../hosts/linux/monitor/LinuxJointOwnerTests.bend)

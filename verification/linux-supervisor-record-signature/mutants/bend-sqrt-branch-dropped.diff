@@ -1,0 +1,11 @@
+--- a/lib/Ed25519.bend
++++ b/lib/Ed25519.bend
+@@ -420,7 +420,7 @@
+ 
+ def root_negated(negated: Bool, +candidate: List<&2, U32>, +sign: U32, +y: List<&2, U32>) -> Maybe<&2, EdPoint>:
+   match negated:
+-    case True{}: signed_x(fe_mul(candidate, sqrt_m1()), sign, y)
++    case True{}: None{}
+     case False{}: None{}
+ 
+ def root_chosen(direct: Bool, negated: Bool, +candidate: List<&2, U32>, +sign: U32, +y: List<&2, U32>) ->

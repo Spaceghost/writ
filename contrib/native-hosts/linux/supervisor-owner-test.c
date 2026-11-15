@@ -9,7 +9,11 @@
    expiring at 120, with the owner's clock at 110 and no role map).
    The role map comes from a provisioning record this test writes to a 0600
    file in a private directory under $TMPDIR (or /tmp): role 1 is principal
-   101, role 2 is 102, over the canary issuer root. Worker 1 and the role 1
+   101, role 2 is 102, over the canary issuer root. The test signs the record
+   (libcrypto, test only) with the RFC 8032 TEST 1 secret key, which the RFC
+   publishes: the module pins the matching SYNTHETIC public key, so the
+   signature exercises the check but authenticates no operator. The driver
+   itself holds no key and verifies nothing. Worker 1 and the role 1
    and role 2 processes are launched by the driver (this binary re-executed
    with --worker or --role); a third sender is an unregistered child of the
    test.
@@ -26,6 +30,8 @@
 #define _GNU_SOURCE
 #include "supervisor_owner.h"
 #include "sha256.h"
+
+#include <openssl/evp.h>
 
 #include <dirent.h>
 #include <errno.h>
@@ -98,7 +104,7 @@ static const uint32_t write_words[APPROVAL_WORDS] = {
 };
 static unsigned char submit_source[4 * APPROVAL_WORDS], submit_write[4 * APPROVAL_WORDS];
 
-/* SupervisorProvisionTests.canary(): version 2, live 1/2/3, roles 1 -> 101
+/* SupervisorProvisionTests.canary(): version 3, live 1/2/3, roles 1 -> 101
    and 2 -> 102, the canary directory (five authorities), placements (four)
    and the program pins: role 1 SHA-256("abc"), role 2 SHA-256(""). The test
    writes this record with both pins replaced by the digest of its own role
@@ -108,13 +114,28 @@ static unsigned char submit_source[4 * APPROVAL_WORDS], submit_write[4 * APPROVA
 #define PIN_ROLE1 44
 #define PIN_ROLE2 53
 static const uint32_t canary_words[CANARY_WORDS] = {
-    2, 1, 2, 3, 2, 1, 101, 2, 102,
+    3, 1, 2, 3, 2, 1, 101, 2, 102,
     5, 1, 101, 5, 2, 102, 6, 1, 103, 9, 1, 104, 7, 2, 105, 5,
     4, 1, 10, 4, 5, 1, 11, 4, 7, 2, 20, 8, 6, 2, 20, 9, 6,
     2, 1, 3128432319u, 2399260650u, 1094795486u, 1571693091u, 2953011619u, 2518121116u, 3021012833u, 4060091821u,
     2, 3820012610u, 2566659092u, 2600203464u, 2574235940u, 665731556u, 1687917388u, 2761267483u, 2018687061u
 };
 static unsigned char program_digest[32];  /* of the role program copy */
+
+/* SYNTHETIC signing keys: the RFC 8032 section 7.1 TEST 1 and TEST 2 secret
+   keys, both published. The driver module pins TEST 1's public key. */
+static const unsigned char operator_secret[32] = {
+    0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60, 0xba, 0x84, 0x4a, 0xf4, 0x92, 0xec, 0x2c, 0xc4,
+    0x44, 0x49, 0xc5, 0x69, 0x7b, 0x32, 0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60
+};
+static const unsigned char other_secret[32] = {
+    0x4c, 0xcd, 0x08, 0x9b, 0x28, 0xff, 0x96, 0xda, 0x9d, 0xb6, 0xc3, 0x46, 0xec, 0x11, 0x4e, 0x0f,
+    0x5b, 0x8a, 0x31, 0x9f, 0x35, 0xab, 0xa6, 0x24, 0xda, 0x8c, 0xf6, 0xed, 0x4f, 0xb8, 0xa6, 0xfb
+};
+/* SupervisorProvision.signing_context(). */
+static const char signing_context[] = "WRIT-LINUXSUP1-RECORD";
+#define SIGNATURE_BYTES 64
+#define SIGNED_BYTES (4 * CANARY_WORDS + SIGNATURE_BYTES)
 
 static int records = -1;          /* the private record directory */
 static int inheritable = -1;      /* a descriptor without close-on-exec */
@@ -133,8 +154,30 @@ static void write_record(const char *name, const unsigned char *bytes, size_t le
     if (write(fd, bytes, length) != (ssize_t)length || fchmod(fd, mode) || close(fd)) die(name);
 }
 
+/* Writes the body and, after it, the Ed25519 signature by `secret` over the
+   signing context followed by the body. */
+static void sign_record(const unsigned char secret[32], const unsigned char *body, size_t length,
+                        unsigned char *out)
+{
+    unsigned char message[sizeof signing_context - 1 + 4 * CANARY_WORDS];
+    if (length > 4 * CANARY_WORDS) { errno = EOVERFLOW; die("sign record"); }
+    memcpy(message, signing_context, sizeof signing_context - 1);
+    memcpy(message + sizeof signing_context - 1, body, length);
+    memcpy(out, body, length);
+    EVP_PKEY *key = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, NULL, secret, 32);
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    size_t signature = SIGNATURE_BYTES;
+    int ok = key && ctx && EVP_DigestSignInit(ctx, NULL, NULL, NULL, key) == 1 &&
+             EVP_DigestSign(ctx, out + length, &signature, message, sizeof signing_context - 1 + length) == 1 &&
+             signature == SIGNATURE_BYTES;
+    EVP_MD_CTX_free(ctx);
+    EVP_PKEY_free(key);
+    if (!ok) { errno = EPROTO; die("sign record"); }
+}
+
 static const char *const record_names[] = {
     "canary", "writable", "linked", "linked-too", "fifo", "mismatch", "symlink", "oversized", "via",
+    "unsigned", "rewritten", "other-key",
     "role-program", "shared-program", "linked-program", "linked-program-too", "notelf", "program-symlink"
 };
 
@@ -201,15 +244,25 @@ static void make_records(void)
     memcpy(words, canary_words, sizeof words);
     digest_words(program_digest, words + PIN_ROLE1);
     digest_words(program_digest, words + PIN_ROLE2);
-    unsigned char bytes[sizeof canary_words];
-    record_bytes(words, CANARY_WORDS, bytes);
+    unsigned char body[sizeof canary_words], bytes[SIGNED_BYTES];
+    record_bytes(words, CANARY_WORDS, body);
+    sign_record(operator_secret, body, sizeof body, bytes);
     write_record("canary", bytes, sizeof bytes, 0600);
     write_record("writable", bytes, sizeof bytes, 0620);
     write_record("linked", bytes, sizeof bytes, 0600);
     if (linkat(records, "linked", records, "linked-too", 0)) die("linkat");
     if (mkfifoat(records, "fifo", 0600)) die("mkfifoat");
+    /* The body alone, protected but unsigned. */
+    write_record("unsigned", body, sizeof body, 0600);
+    /* Rewritten after signing, as a process of the supervisor's user could:
+       role 2 now names principal 101. */
+    bytes[4 * 8] = 101;
+    write_record("rewritten", bytes, sizeof bytes, 0600);
+    sign_record(other_secret, body, sizeof body, bytes);
+    write_record("other-key", bytes, sizeof bytes, 0600);
     words[3] = 4; /* live stamp authority 4: not the canary issuer's root */
-    record_bytes(words, CANARY_WORDS, bytes);
+    record_bytes(words, CANARY_WORDS, body);
+    sign_record(operator_secret, body, sizeof body, bytes);
     write_record("mismatch", bytes, sizeof bytes, 0600);
     if (symlinkat("canary", records, "symlink")) die("symlinkat");
     if (symlinkat(".", records, "via")) die("symlinkat via");
@@ -822,7 +875,13 @@ static void provisioning(void)
     provision_fails("fifo", 1, WRIT_OWNER_PROVISION_REFUSED, 0, "fifo_record_refused",
                     "FIFO with a writer: not read, facts forwarded, PROVISION_REFUSED, fail-stop");
     provision_fails("mismatch", 1, WRIT_OWNER_PROVISION_REFUSED, 0, "foreign_root_record_refused",
-                    "record whose issuer root differs: PROVISION_REFUSED, fail-stop");
+                    "signed record whose issuer root differs: PROVISION_REFUSED, fail-stop");
+    provision_fails("unsigned", 1, WRIT_OWNER_PROVISION_REFUSED, 0, "unsigned_record_refused",
+                    "protected 0600 record without a signature: PROVISION_REFUSED, fail-stop");
+    provision_fails("rewritten", 1, WRIT_OWNER_PROVISION_REFUSED, 0, "rewritten_record_refused",
+                    "signed record with role 2 rewritten to 101 afterwards: PROVISION_REFUSED, fail-stop");
+    provision_fails("other-key", 1, WRIT_OWNER_PROVISION_REFUSED, 0, "other_key_record_refused",
+                    "record signed by the RFC 8032 TEST 2 key: PROVISION_REFUSED, fail-stop");
     provision_fails("symlink", 0, WRIT_OWNER_ERROR, ELOOP, "symlink_record_not_followed",
                     "symlink to the canary record: not opened (ELOOP), nothing sent, fail-stop");
     provision_fails("oversized", 0, WRIT_OWNER_ERROR, EFBIG, "oversized_record_not_sent",

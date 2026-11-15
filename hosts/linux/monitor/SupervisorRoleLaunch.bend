@@ -24,10 +24,10 @@ import ./LocalChannel.bend as C
 # index is never released, so a role whose process exits cannot be rebound in
 # this interpreter's lifetime. A refusal binds nothing.
 #
-# Not established. A digest names bytes, not an author: the record's writer is
-# trusted for which program each role runs, and file facts do not
-# authenticate that writer. Nothing here binds a worker session to a
-# principal.
+# Not established. A digest names bytes, not an author: the record that pins
+# it is signed by the operator key SupervisorProvision checks, which says who
+# chose each program, not who built it, and an older signed record is accepted
+# again. Nothing here binds a worker session to a principal.
 
 # SHA-256, as eight big-endian U32 words in digest order.
 type Digest is Data:

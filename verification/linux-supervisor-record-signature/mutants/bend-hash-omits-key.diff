@@ -1,0 +1,11 @@
+--- a/lib/Ed25519.bend
++++ b/lib/Ed25519.bend
+@@ -506,7 +506,7 @@
+   match small:
+     case True{}: False{}
+     case False{}:
+-      verify_hash(Sha.digest(List.append(&2, U32, r, List.append(&2, U32, public, message))), r, s, a)
++      verify_hash(Sha.digest(List.append(&2, U32, r, message)), r, s, a)
+ 
+ def verify_key(key: Maybe<&2, EdPoint>, +r: List<&2, U32>, +s: List<&2, U32>, +public: List<&2, U32>,
+     +message: List<&2, U32>) -> Bool:

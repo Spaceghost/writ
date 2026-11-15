@@ -1,0 +1,9 @@
+--- a/lib/Ed25519.bend
++++ b/lib/Ed25519.bend
+@@ -533,5 +533,5 @@
+ # Public entry point: whether `signature` is a valid Ed25519 signature by the
+ # key `public` over `message` (see the decision above).
+ def verify(+public: List<&2, U32>, +message: List<&2, U32>, +signature: List<&2, U32>) -> Bool:
+-  shaped(length_is(public, 32n) && length_is(signature, 64n) && all_bytes(public) && all_bytes(signature),
++  shaped(all_bytes(public) && all_bytes(signature),
+     public, message, signature)

@@ -1,0 +1,25 @@
+bend s-order-unchecked 1 | FAIL: Ed25519 refuses a non-canonical S, small-order keys and malformed keys and signatures
+bend key-above-p-accepted 1 | FAIL: Ed25519 encodes the base point and refuses keys above p, off the curve or with a negative zero x
+bend negative-zero-accepted 1 | FAIL: Ed25519 encodes the base point and refuses keys above p, off the curve or with a negative zero x
+bend sign-ignored 1 | FAIL: Ed25519 encodes the base point and refuses keys above p, off the curve or with a negative zero x
+bend r-not-compared 1 | FAIL: Ed25519 refuses an altered message, an altered R and another key
+bend hash-omits-key 1 | FAIL: Ed25519 verifies RFC 8032 TESTs 1 to 3
+bend sqrt-branch-dropped 1 | FAIL: Ed25519 encodes the base point and refuses keys above p, off the curve or with a negative zero x
+bend fold-19 1 | FAIL: Ed25519 encodes the base point and refuses keys above p, off the curve or with a negative zero x
+bend two-carry-passes 1 | FAIL: Ed25519 field normalization leaves every limb below 2^16 at the carry edge
+bend one-reduction 1 | FAIL: Ed25519 encodes the base point and refuses keys above p, off the curve or with a negative zero x
+bend both-drops-base 1 | FAIL: Ed25519 verifies RFC 8032 TESTs 1 to 3
+bend length-unchecked 0 | NO FAILURE
+bend sha-constant 1 | FAIL: Sha512 matches digests across block boundaries and refuses a value that is not a byte
+bend sha-carry-dropped 1 | FAIL: Sha512 matches digests across block boundaries and refuses a value that is not a byte
+bend sha-padding 1 | FAIL: Sha512 matches digests across block boundaries and refuses a value that is not a byte
+bend sha-range-unchecked 1 | FAIL: Sha512 matches digests across block boundaries and refuses a value that is not a byte
+bend signature-ignored 1 | FAIL: SupervisorProvision refuses records not signed by the pinned operator key over the signing context
+bend context-dropped 1 | FAIL: SupervisorProvision canary record installs its role map and program digests over the canary issuer root
+bend short-file-unsigned 1 | FAIL: SupervisorProvision refuses records not signed by the pinned operator key over the signing context
+bend range-unchecked 1 | FAIL: SupervisorProvision refuses records not signed by the pinned operator key over the signing context
+bend bound-unchecked 1 | FAIL: SupervisorProvision refuses records not signed by the pinned operator key over the signing context
+bend version-2-kept 1 | FAIL: SupervisorProvision canary record installs its role map and program digests over the canary issuer root
+bend small-order-allowed 1 | FAIL: Ed25519 refuses a non-canonical S, small-order keys and malformed keys and signatures
+bend s-equal-order-allowed 0 | NO FAILURE
+bend anchor-not-passed 1 | FAIL: SupervisorWire provisions first, then attributes revokes through the installed map

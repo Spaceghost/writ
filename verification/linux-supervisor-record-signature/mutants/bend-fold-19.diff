@@ -1,0 +1,11 @@
+--- a/lib/Ed25519.bend
++++ b/lib/Ed25519.bend
+@@ -86,7 +86,7 @@
+     case x <> xs:
+       match high:
+         case []: x <> fold38(xs, [])
+-        case y <> ys: (x + 38 * y : U32) <> fold38(xs, ys)
++        case y <> ys: (x + 19 * y : U32) <> fold38(xs, ys)
+ 
+ def carried(x: U32, pair: List<&2, U32> & U32) -> List<&2, U32> & U32:
+   match pair:

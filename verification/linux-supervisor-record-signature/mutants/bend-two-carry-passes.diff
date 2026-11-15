@@ -1,0 +1,11 @@
+--- a/lib/Ed25519.bend
++++ b/lib/Ed25519.bend
+@@ -114,7 +114,7 @@
+ # Three passes leave every limb below 2^16 for limbs below 2^27: the third
+ # pass carries out only from a value within 38 of 2^256.
+ def normalize(xs: List<&2, U32>) -> List<&2, U32>:
+-  carry_once(carry_once(carry_once(xs)))
++  carry_once(carry_once(xs))
+ 
+ # --- Field operations --------------------------------------------------------------
+ 

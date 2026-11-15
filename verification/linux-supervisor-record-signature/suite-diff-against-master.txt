@@ -1,0 +1,17 @@
+diff <(bend Tests.bend at ea156773) <(bend Tests.bend at this change)
+1865a1866,1872
+> PASS: Sha512 matches digests across block boundaries and refuses a value that is not a byte
+> PASS: Ed25519 field normalization leaves every limb below 2^16 at the carry edge
+> PASS: Ed25519 encodes the base point and refuses keys above p, off the curve or with a negative zero x
+> PASS: Ed25519 verifies RFC 8032 TESTs 1 to 3
+> PASS: Ed25519 refuses an altered message, an altered R and another key
+> PASS: Ed25519 refuses a non-canonical S, small-order keys and malformed keys and signatures
+> Ed25519: 6 checks passed
+2168a2176
+> PASS: SupervisorProvision refuses records not signed by the pinned operator key over the signing context
+2174,2175c2182,2183
+< PASS: SupervisorWire refuses unprovisioned frames, refused records and reprovisioning
+< SupervisorProvision: 8 checks passed
+---
+> PASS: SupervisorWire refuses unprovisioned frames, refused or unsigned records and reprovisioning
+> SupervisorProvision: 9 checks passed

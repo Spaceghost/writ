@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -459,7 +459,7 @@
+ def signed_bounded(within: Bool, +bytes: +List<U32>, +anchor: Anchor) -> Signed:
+   match within:
+     case False{}: Unsigned{RecordTooLong{}}
+-    case True{}: signed_ranged(LH.all_bytes(bytes), bytes, anchor)
++    case True{}: signed_ranged(True{}, bytes, anchor)
+ 
+ # Exported for tests: the signed body of a file of at most `maximum` bytes, or
+ # why there is none.

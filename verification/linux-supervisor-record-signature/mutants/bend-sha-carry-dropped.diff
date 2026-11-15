@@ -1,0 +1,11 @@
+--- a/lib/Sha512.bend
++++ b/lib/Sha512.bend
+@@ -45,7 +45,7 @@
+   match a b:
+     case W64{ah, +al} W64{bh, bl}:
+       +lo = (al + bl : U32)
+-      W64{(ah + bh + carry_of(U32.is_lt(lo, al)) : U32), lo}
++      W64{(ah + bh : U32), lo}
+ 
+ def xor(a: W64, b: W64) -> W64:
+   match a b:

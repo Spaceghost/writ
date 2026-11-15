@@ -1,0 +1,11 @@
+--- a/lib/Ed25519.bend
++++ b/lib/Ed25519.bend
+@@ -197,7 +197,7 @@
+ # A normalized value is below 2^256 < 3p, so two conditional subtractions
+ # leave the canonical representative below p.
+ def freeze(+a: List<&2, U32>) -> List<&2, U32>:
+-  reduce_once(reduce_once(a))
++  reduce_once(a)
+ 
+ def limbs_equal(a: List<&2, U32>, b: List<&2, U32>) -> Bool:
+   match a:

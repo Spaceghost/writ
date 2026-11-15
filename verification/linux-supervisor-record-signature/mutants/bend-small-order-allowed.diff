@@ -1,0 +1,11 @@
+--- a/lib/Ed25519.bend
++++ b/lib/Ed25519.bend
+@@ -504,7 +504,7 @@
+ def verify_order(small: Bool, +r: List<&2, U32>, +s: List<&2, U32>, +a: EdPoint, +public: List<&2, U32>,
+     +message: List<&2, U32>) -> Bool:
+   match small:
+-    case True{}: False{}
++    case True{}: verify_hash(Sha.digest(List.append(&2, U32, r, List.append(&2, U32, public, message))), r, s, a)
+     case False{}:
+       verify_hash(Sha.digest(List.append(&2, U32, r, List.append(&2, U32, public, message))), r, s, a)
+ 

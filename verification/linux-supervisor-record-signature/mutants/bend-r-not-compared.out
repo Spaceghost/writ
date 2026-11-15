@@ -1,0 +1,5 @@
+PASS: Sha512 matches digests across block boundaries and refuses a value that is not a byte
+PASS: Ed25519 field normalization leaves every limb below 2^16 at the carry edge
+PASS: Ed25519 encodes the base point and refuses keys above p, off the curve or with a negative zero x
+PASS: Ed25519 verifies RFC 8032 TESTs 1 to 3
+FAIL: Ed25519 refuses an altered message, an altered R and another key

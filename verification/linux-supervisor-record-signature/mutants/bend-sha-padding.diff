@@ -1,0 +1,11 @@
+--- a/lib/Sha512.bend
++++ b/lib/Sha512.bend
+@@ -207,7 +207,7 @@
+ def padded(+count: U32, bytes: List<&2, U32>) -> Nat & List<&2, U32>:
+   +bits = (count * 8 : U32)
+   length = zeros(12n, word_bytes(bits, []))
+-  padding = {128 <> zeros(U32.to_nat(((239 - (count % 128)) % 128 : U32)), length) : List<&2, U32>}
++  padding = {128 <> zeros(U32.to_nat(((240 - (count % 128)) % 128 : U32)), length) : List<&2, U32>}
+   (U32.to_nat(((count + 144) / 128 : U32)), List.append(&2, U32, bytes, padding))
+ 
+ def state_bytes(state: State512) -> List<&2, U32>:

@@ -1,0 +1,11 @@
+--- a/lib/Sha512.bend
++++ b/lib/Sha512.bend
+@@ -230,7 +230,7 @@
+ def measured(bytes: List<&2, U32>, ok: Bool, +count: U32) -> Bool & U32:
+   match bytes:
+     case []: (ok, count)
+-    case +b <> rest: measured(rest, ok && U32.is_le(b, 255), (count + 1 : U32))
++    case +b <> rest: measured(rest, ok, (count + 1 : U32))
+ 
+ def digest_admitted(ok: Bool, +count: U32, +bytes: List<&2, U32>) -> Maybe<&2, List<&2, U32>>:
+   match ok:

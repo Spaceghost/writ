@@ -1,0 +1,11 @@
+--- a/lib/Ed25519.bend
++++ b/lib/Ed25519.bend
+@@ -452,7 +452,7 @@
+ # Exported for tests: decode 32 bytes to a point, refusing y >= p.
+ def decode(+bytes: List<&2, U32>) -> Maybe<&2, EdPoint>:
+   +y = bytes_limbs(clear_top(bytes))
+-  decode_canonical(limbs_equal(freeze(y), y), y, top_bit(bytes))
++  decode_canonical(True{}, y, top_bit(bytes))
+ 
+ # --- Verification ------------------------------------------------------------------
+ 

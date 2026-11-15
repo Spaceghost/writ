@@ -1,6 +1,7 @@
 import Base
 import ./SupervisorWire.bend as SW
 import ./SupervisorRoleLaunch.bend as SR
+import ./SupervisorProvision.bend as SP
 import ./SupervisorOwnerTests.bend as OT
 import ./LinuxJointOwnerTests.bend as JO
 import ../../../HostPrimitives.bend as P
@@ -106,9 +107,9 @@ def frames_share_owner(+s: JO.Stages) -> Bool:
 
 def bounded_and_stopped(+s: JO.Stages) -> Bool:
   +owner = OT.owner_of(JO.stage_running(s))
-  String.eq(SW.reply(SW.dispatch(SW.State{owner, OT.authority(), 100000, False{}, True{}, SR.none()}, drain())),
+  String.eq(SW.reply(SW.dispatch(SW.State{owner, OT.authority(), 100000, False{}, True{}, SR.none(), SP.no_anchor()}, drain())),
     line("100001", "EXHAUSTED", "1", "-")) &&
-  String.eq(SW.reply(SW.dispatch(SW.State{owner, OT.authority(), 5, True{}, True{}, SR.none()}, from_role("1", "113", revoke5()))),
+  String.eq(SW.reply(SW.dispatch(SW.State{owner, OT.authority(), 5, True{}, True{}, SR.none(), SP.no_anchor()}, from_role("1", "113", revoke5()))),
     line("6", "STOPPED", "1", "-"))
 
 def effects_render() -> Bool:

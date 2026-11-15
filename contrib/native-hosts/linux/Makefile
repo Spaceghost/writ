@@ -52,5 +52,6 @@ $(OUT)/supervisor-channel-test: supervisor-channel-test.c supervisor_channel.c s
 
 # Owned-process test of the supervisor driver against the generated Bend
 # owner (SYNTHETIC provisioning module); clone3 children and private sockets.
+# The test (not the driver) links libcrypto to sign its SYNTHETIC records.
 $(OUT)/supervisor-owner-test: supervisor-owner-test.c supervisor_owner.c supervisor_owner.h supervisor_channel.c supervisor_channel.h policy_pipe.c policy_pipe.h sha256.c sha256.h | $(OUT)
-	$(CC) $(CPPFLAGS) -DWRIT_OWNER_TESTING $(CFLAGS) supervisor-owner-test.c supervisor_owner.c supervisor_channel.c policy_pipe.c sha256.c -pthread -o "$@"
+	$(CC) $(CPPFLAGS) -DWRIT_OWNER_TESTING $(CFLAGS) $(shell $(PKG_CONFIG) --cflags libcrypto) supervisor-owner-test.c supervisor_owner.c supervisor_channel.c policy_pipe.c sha256.c -pthread $(shell $(PKG_CONFIG) --libs libcrypto) -o "$@"

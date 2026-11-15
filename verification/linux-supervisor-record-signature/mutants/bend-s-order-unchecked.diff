@@ -1,0 +1,11 @@
+--- a/lib/Ed25519.bend
++++ b/lib/Ed25519.bend
+@@ -523,7 +523,7 @@
+ 
+ def halves(pair: List<&2, U32> & List<&2, U32>, +public: List<&2, U32>, +message: List<&2, U32>) -> Bool:
+   match pair:
+-    case (+r, +s): verify_scalar(below_order(s), r, s, public, message)
++    case (+r, +s): verify_scalar(True{}, r, s, public, message)
+ 
+ def shaped(well: Bool, +public: List<&2, U32>, +message: List<&2, U32>, +signature: List<&2, U32>) -> Bool:
+   match well:

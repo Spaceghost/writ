@@ -1,0 +1,3 @@
+bend Tests.bend -o core-tests.c; clang -std=c11 -O0 -w core-tests.c -o core-tests -lpthread -lm
+./core-tests +RTS --threads 4 --gpu off > native.log; cmp bend.log native.log
+exit 0: native.log is byte-identical to bend.log (3452 lines, sha256 8332ed8d1cd717f092a214c17dad7d5404497c927f2ab6375417f7ad45f0d4de)

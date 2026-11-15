@@ -50,6 +50,7 @@ import ./hosts/linux/monitor/SupervisorApprovalTests.bend as SupervisorApproval
 import ./hosts/linux/monitor/SupervisorRoleLaunchTests.bend as SupervisorRoleLaunch
 import ./FacadeTests.bend as Facade
 import ./LocalSupervisorTests.bend as LocalSupervisor
+import ./lib/Ed25519Tests.bend as Ed25519
 import ./IssuanceTests.bend as Issuance
 import ./IssuanceBoundaryTests.bend as IssuanceBoundary
 import ./AuditTests.bend as Audit
@@ -124,6 +125,7 @@ def main() -> IO(Unit):
     StageGraph.main()
     StagePorts.main()
     host_tests()
+    Ed25519.main()
     linux_tests()
     Facade.main()
     LocalSupervisor.main()

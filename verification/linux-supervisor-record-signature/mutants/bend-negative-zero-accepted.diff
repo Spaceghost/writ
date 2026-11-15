@@ -1,0 +1,11 @@
+--- a/lib/Ed25519.bend
++++ b/lib/Ed25519.bend
+@@ -416,7 +416,7 @@
+     case False{}: point_from(flip_x(Bool.not(U32.is_eq(odd_bit(odd), sign)), x), y)
+ 
+ def signed_x(+x: List<&2, U32>, +sign: U32, +y: List<&2, U32>) -> Maybe<&2, EdPoint>:
+-  signed_x_checked(fe_equal(x, fe_zero()) && U32.is_eq(sign, 1), fe_odd(x), x, sign, y)
++  signed_x_checked(False{}, fe_odd(x), x, sign, y)
+ 
+ def root_negated(negated: Bool, +candidate: List<&2, U32>, +sign: U32, +y: List<&2, U32>) -> Maybe<&2, EdPoint>:
+   match negated:

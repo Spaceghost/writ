@@ -1,0 +1,11 @@
+--- a/lib/Ed25519.bend
++++ b/lib/Ed25519.bend
+@@ -329,7 +329,7 @@
+       match sbits:
+         case []: acc
+         case +sb <> srest:
+-          joint(krest, srest, bit_choose(U32.is_eq(kb, 1), U32.is_eq(sb, 1), point_add(acc, acc), neg_a, b, both),
++          joint(krest, srest, bit_choose(U32.is_eq(kb, 1), U32.is_eq(sb, 1), point_add(acc, acc), neg_a, b, neg_a),
+             neg_a, b, both)
+ 
+ def byte_bits(+b: U32, rest: List<&2, U32>) -> List<&2, U32>:

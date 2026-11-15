@@ -1250,8 +1250,24 @@ native cases pass; 15 of 16 Bend and 9 of 10 C mutants fail, and the two
 survivors are equivalent and reviewed only. The suite output differs from
 `b3bb2245` only by the new and renamed checks, the native CPU run is
 identical, the full suite passes under QuickJS with the Genode stack, and the
-existing-law proof passed with `--verdict`. The record's writer is trusted,
-not authenticated; shared libraries are not pinned; and no host is qualified.
+existing-law proof passed with `--verdict`. The record's writer was then
+trusted, not authenticated (see the record signature below); shared libraries
+are not pinned; and no host is qualified.
+
+The [supervisor record signature record](verification/linux-supervisor-record-signature/README.md)
+authenticates the protected record. The provisioning module pins the
+operator's Ed25519 public key; record version 3 ends in a signature over
+"WRIT-LINUXSUP1-RECORD" and the body, which Bend verifies
+(`lib/Ed25519.bend` and `lib/Sha512.bend`, RFC 8032 and FIPS 180-4) before
+parsing any record byte. The driver forwards bytes and holds no key. 6
+Ed25519/SHA-512 and 9 provisioning Bend checks and 63 native cases pass
+(including unsigned, rewritten and other-key records); 23 of 25 Bend mutants
+fail, and the two survivors are reviewed only. The suite output differs from
+`ea156773` only by the new and renamed checks, the native CPU run is
+identical, the full suite passes under QuickJS with the Genode stack (38.9 s
+against 20.9 s), and the existing-law proof passed with `--verdict`. The key
+is the published RFC 8032 TEST 1 key, an older signed record is accepted
+again, and no host is qualified.
 
 The [linear stored-approval lookup record](verification/issuance-linear-lookup/README.md)
 replaces a quadratic duplicate scan in `Issuance.find_stored` with one pass
