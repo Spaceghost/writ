@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -430,7 +430,7 @@
+ # refused as stale whatever else is wrong with it.
+ def fresh_fault(+floor: U32, +record: Record) -> Maybe<&2, ProvisionError>:
+   match record:
+-    case Record{+serial, _, _, _, _, _}: first_fault(U32.is_lt(serial, floor), RecordStale{}, record_fault(record))
++    case Record{+serial, _, _, _, _, _}: first_fault(Maybe.is_some(&2, ProvisionError, record_fault(record)), RolesEmpty{}, first_fault(U32.is_lt(serial, floor), RecordStale{}, None{}))
+ 
+ def install_read(+floor: U32, read: RecordRead) -> Installed:
+   match read:

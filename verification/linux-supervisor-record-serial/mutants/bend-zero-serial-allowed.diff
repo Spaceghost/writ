@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -317,7 +317,7 @@
+ 
+ def record_serial(zero: Bool, +serial: U32, +live: T.Stamp, +count: U32, +rest: +List<U32>) -> RecordRead:
+   match zero:
+-    case True{}: RecordBad{RecordZero{}}
++    case True{}: after_roles(serial, live, take_roles(rest, U32.is_eq(count, 0), count))
+     case False{}: after_roles(serial, live, take_roles(rest, U32.is_eq(count, 0), count))
+ 
+ def record_versioned(current: Bool, +serial: U32, +live: T.Stamp, +count: U32, +rest: +List<U32>) -> RecordRead:

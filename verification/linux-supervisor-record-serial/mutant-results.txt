@@ -1,0 +1,7 @@
+bend stale-unchecked 1 | FAIL: SupervisorProvision refuses records whose serial is below the pinned floor before any consistency fault
+bend floor-equal-refused 1 | FAIL: SupervisorProvision canary record installs its role map and program digests over the canary issuer root
+bend floor-ignored 1 | FAIL: SupervisorWire refuses unprovisioned frames, refused, unsigned or stale records and reprovisioning
+bend zero-serial-allowed 1 | FAIL: SupervisorProvision refuses unknown kinds, zero serials or principals and short sections
+bend version-3-kept 1 | FAIL: SupervisorProvision canary record installs its role map and program digests over the canary issuer root
+bend serial-after-stamp 1 | FAIL: SupervisorProvision canary record installs its role map and program digests over the canary issuer root
+bend consistency-before-stale 1 | FAIL: SupervisorProvision refuses records whose serial is below the pinned floor before any consistency fault

@@ -1269,6 +1269,22 @@ against 20.9 s), and the existing-law proof passed with `--verdict`. The key
 is the published RFC 8032 TEST 1 key, an older signed record is accepted
 again, and no host is qualified.
 
+The [supervisor record serial record](verification/linux-supervisor-record-serial/README.md)
+refuses rollback below a pinned floor. Record version 4 carries a nonzero
+serial inside the signed body, and the provisioning module pins a floor
+beside the operator key; after the signature verifies and the body decodes,
+a serial below the floor is `RecordStale`, before any consistency check. The
+floor is pinned rather than stored, because a file the supervisor's user
+could write would let it lower the mark. 10 provisioning Bend checks and 64
+native cases pass (including a correctly signed record below the floor), all
+7 Bend mutants fail, the suite output differs from `f56a3f70` only by the new
+and renamed checks, the native CPU run is identical, the full suite passes
+under QuickJS with the Genode stack, and the existing-law proof passed with
+`--verdict`. A superseded record at or above the floor is still accepted
+until the operator launches a module with a higher floor, no high-water mark
+survives a run, the key is still the published TEST 1 key, and no host is
+qualified.
+
 The [linear stored-approval lookup record](verification/issuance-linear-lookup/README.md)
 replaces a quadratic duplicate scan in `Issuance.find_stored` with one pass
 that returns the same answer for every list. Six direct lookup checks and two

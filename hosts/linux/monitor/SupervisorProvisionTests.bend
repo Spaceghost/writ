@@ -15,7 +15,7 @@ import ../../../TransferTests.bend as TF
 import ../../../Test.bend as Test
 
 # Provisioning records over the canary issuer root (live stamp 1/2/3, the
-# IssuanceTests directory and placements) with roles 1 -> 101 (read authority
+# IssuanceTests directory and placements), serial 2, with roles 1 -> 101 (read authority
 # for domain 5) and 2 -> 102 (write authority for domain 6). The records are
 # SYNTHETIC test bootstrap data written by a trusted test writer.
 
@@ -31,35 +31,49 @@ def programs() -> SR.Programs:
   SR.Program{1n, abc_digest(), SR.Program{2n, empty_digest(), SR.NoPrograms{}}}
 
 def canary() -> SP.Record:
-  SP.Record{TF.stamp(), OT.roles(), IT.directory(), IT.placements(), programs()}
+  SP.Record{2, TF.stamp(), OT.roles(), IT.directory(), IT.placements(), programs()}
 
 # `canary()` as the C test writes it (supervisor-owner-test.c), in hex.
 def canary_hex() -> String:
-  "0300000001000000020000000300000002000000010000006500000002000000660000000500000001000000650000000500000002000000660000000600000001000000670000000900000001000000680000000700000002000000690000000500000004000000010000000a0000000400000005000000010000000b000000040000000700000002000000140000000800000006000000020000001400000009000000060000000200000001000000bf1678baeacf018fde4041412322ae5da36103b09c7a179661ff10b4ad1500f20200000042c4b0e3141cfc98c8f4fb9a24b96f99e441ae274c939b641b9995a455b85278"
+  "040000000200000001000000020000000300000002000000010000006500000002000000660000000500000001000000650000000500000002000000660000000600000001000000670000000900000001000000680000000700000002000000690000000500000004000000010000000a0000000400000005000000010000000b000000040000000700000002000000140000000800000006000000020000001400000009000000060000000200000001000000bf1678baeacf018fde4041412322ae5da36103b09c7a179661ff10b4ad1500f20200000042c4b0e3141cfc98c8f4fb9a24b96f99e441ae274c939b641b9995a455b85278"
 
 # SYNTHETIC OPERATOR KEY: the RFC 8032 section 7.1 TEST 1 public key. Its
 # secret key is published in the RFC, so a signature under it authenticates
 # nobody; it stands in for the operator's key in tests and the driver module.
+def operator_key() -> +List<U32>:
+  [215, 90, 152, 1, 130, 177, 10, 183, 213, 75, 254, 211, 201, 100, 7, 58, 14, 225, 114, 243, 218, 166, 35, 37, 175, 2, 26, 104, 247, 7, 81, 26]
+
+# SYNTHETIC floor: the canary's serial, so the canary is the oldest record
+# accepted.
+def floor() -> U32:
+  2
+
 def anchor() -> SP.Anchor:
-  SP.Anchor{[215, 90, 152, 1, 130, 177, 10, 183, 213, 75, 254, 211, 201, 100, 7, 58, 14, 225, 114, 243, 218, 166, 35, 37, 175, 2, 26, 104, 247, 7, 81, 26]}
+  SP.Anchor{operator_key(), floor()}
 
 # `canary_hex()` followed by the TEST 1 secret key's signature over
 # "WRIT-LINUXSUP1-RECORD" and the body (made with Python `cryptography`).
 def canary_signed_hex() -> String:
-  "0300000001000000020000000300000002000000010000006500000002000000660000000500000001000000650000000500000002000000660000000600000001000000670000000900000001000000680000000700000002000000690000000500000004000000010000000a0000000400000005000000010000000b000000040000000700000002000000140000000800000006000000020000001400000009000000060000000200000001000000bf1678baeacf018fde4041412322ae5da36103b09c7a179661ff10b4ad1500f20200000042c4b0e3141cfc98c8f4fb9a24b96f99e441ae274c939b641b9995a455b85278b922226e02953660ee3829dd62dd69dd2d80b34022faff288fac9b52dc09fbb61a761994f036199a6db32a9e8ef55b246a2930c0153311d315d7a176bb5ac302"
+  "040000000200000001000000020000000300000002000000010000006500000002000000660000000500000001000000650000000500000002000000660000000600000001000000670000000900000001000000680000000700000002000000690000000500000004000000010000000a0000000400000005000000010000000b000000040000000700000002000000140000000800000006000000020000001400000009000000060000000200000001000000bf1678baeacf018fde4041412322ae5da36103b09c7a179661ff10b4ad1500f20200000042c4b0e3141cfc98c8f4fb9a24b96f99e441ae274c939b641b9995a455b85278cd93a38977f4f9edde57061a70afe22aa195a15ab4b47e7d260c58d00f3a5f91fc322818b98b42d860efde982b0906db6c6abcb4f1616e704510347e36526c01"
 
 # The same body signed by the RFC 8032 TEST 2 key instead.
 def canary_other_key_hex() -> String:
-  "0300000001000000020000000300000002000000010000006500000002000000660000000500000001000000650000000500000002000000660000000600000001000000670000000900000001000000680000000700000002000000690000000500000004000000010000000a0000000400000005000000010000000b000000040000000700000002000000140000000800000006000000020000001400000009000000060000000200000001000000bf1678baeacf018fde4041412322ae5da36103b09c7a179661ff10b4ad1500f20200000042c4b0e3141cfc98c8f4fb9a24b96f99e441ae274c939b641b9995a455b85278f141090fe3319857e2486edc189b255ed8252418cccc3771b75e630fa71d77888fe9796ffc107d3e32dcc6316eb97b1a3fc538c4e0f6c14df11a36241c39d70e"
+  "040000000200000001000000020000000300000002000000010000006500000002000000660000000500000001000000650000000500000002000000660000000600000001000000670000000900000001000000680000000700000002000000690000000500000004000000010000000a0000000400000005000000010000000b000000040000000700000002000000140000000800000006000000020000001400000009000000060000000200000001000000bf1678baeacf018fde4041412322ae5da36103b09c7a179661ff10b4ad1500f20200000042c4b0e3141cfc98c8f4fb9a24b96f99e441ae274c939b641b9995a455b852783b974102f306454b8ccdcc1097b55ee752bb5669f00a3fa92d4c0074aae0376684d74aea9cae78c94cacbfc6c67f50fd2774f7ff4a5d89d60d4b3d3f54112802"
 
-# The canary body as version 2, correctly signed by the TEST 1 key: the
-# signature is necessary, not sufficient.
-def canary_v2_signed_hex() -> String:
-  "0200000001000000020000000300000002000000010000006500000002000000660000000500000001000000650000000500000002000000660000000600000001000000670000000900000001000000680000000700000002000000690000000500000004000000010000000a0000000400000005000000010000000b000000040000000700000002000000140000000800000006000000020000001400000009000000060000000200000001000000bf1678baeacf018fde4041412322ae5da36103b09c7a179661ff10b4ad1500f20200000042c4b0e3141cfc98c8f4fb9a24b96f99e441ae274c939b641b9995a455b852780c476b827fd6eaff319ffa3edb56dca14162f0f83a4826f9ae55cc2d2dc850dfb536d83239600ef8d60de9554dfabfdfc66070eb748e6bb89bf410c64a7aff02"
+# The canary body as version 3 (no serial), correctly signed by the TEST 1
+# key: the signature is necessary, not sufficient.
+def canary_v3_signed_hex() -> String:
+  "0300000001000000020000000300000002000000010000006500000002000000660000000500000001000000650000000500000002000000660000000600000001000000670000000900000001000000680000000700000002000000690000000500000004000000010000000a0000000400000005000000010000000b000000040000000700000002000000140000000800000006000000020000001400000009000000060000000200000001000000bf1678baeacf018fde4041412322ae5da36103b09c7a179661ff10b4ad1500f20200000042c4b0e3141cfc98c8f4fb9a24b96f99e441ae274c939b641b9995a455b85278b922226e02953660ee3829dd62dd69dd2d80b34022faff288fac9b52dc09fbb61a761994f036199a6db32a9e8ef55b246a2930c0153311d315d7a176bb5ac302"
 
 # The same body signed by the TEST 1 key without the signing context.
 def canary_no_context_hex() -> String:
-  "0300000001000000020000000300000002000000010000006500000002000000660000000500000001000000650000000500000002000000660000000600000001000000670000000900000001000000680000000700000002000000690000000500000004000000010000000a0000000400000005000000010000000b000000040000000700000002000000140000000800000006000000020000001400000009000000060000000200000001000000bf1678baeacf018fde4041412322ae5da36103b09c7a179661ff10b4ad1500f20200000042c4b0e3141cfc98c8f4fb9a24b96f99e441ae274c939b641b9995a455b852789952a9f1bae43a14d9ede68bbbcb058cd62f06f1f7c61fc56aa9a49f8394ca61572bee8d7c61e5ecf0ff53caebc39a2b47a2d09667cb13c569056804addabd01"
+  "040000000200000001000000020000000300000002000000010000006500000002000000660000000500000001000000650000000500000002000000660000000600000001000000670000000900000001000000680000000700000002000000690000000500000004000000010000000a0000000400000005000000010000000b000000040000000700000002000000140000000800000006000000020000001400000009000000060000000200000001000000bf1678baeacf018fde4041412322ae5da36103b09c7a179661ff10b4ad1500f20200000042c4b0e3141cfc98c8f4fb9a24b96f99e441ae274c939b641b9995a455b85278793c5696f8dfa3820271b7158e451e55579956badf1f49ac4d0bd95b2774319be2635908abce70634194236ff68ee88dc03f5c82234a45bfe6b92a952af61501"
+
+# The canary at serial 1, below the floor, correctly signed by the TEST 1 key:
+# a superseded record an attacker could substitute.
+def canary_stale_signed_hex() -> String:
+  "040000000100000001000000020000000300000002000000010000006500000002000000660000000500000001000000650000000500000002000000660000000600000001000000670000000900000001000000680000000700000002000000690000000500000004000000010000000a0000000400000005000000010000000b000000040000000700000002000000140000000800000006000000020000001400000009000000060000000200000001000000bf1678baeacf018fde4041412322ae5da36103b09c7a179661ff10b4ad1500f20200000042c4b0e3141cfc98c8f4fb9a24b96f99e441ae274c939b641b9995a455b852782bd4d48314059cfb4c786106b506552bf71939cdabb805a3b52af59db9bb5e34c2366f4f47b9aa94157dbc9628de84362af096878067e8793a7295f94746da08"
+
 
 # st_mode 0o100600, one link, owner 1000 = euid.
 def protected() -> SP.ConfigFacts:
@@ -92,6 +106,7 @@ def error_index(e: SP.ProvisionError) -> U32:
     case SP.IssuerMismatch{}: 17
     case SP.ProgramsInvalid{}: 18
     case SP.SignatureInvalid{}: 19
+    case SP.RecordStale{}: 20
 
 def error_equal(a: SP.ProvisionError, b: SP.ProvisionError) -> Bool:
   U32.is_eq(error_index(a), error_index(b))
@@ -108,7 +123,7 @@ def refused_with(installed: SP.Installed, expected: SP.ProvisionError) -> Bool:
 
 # Body checks, applied as `install` applies them once the signature verified.
 def bytes_refused(bytes: +List<U32>, expected: SP.ProvisionError) -> Bool:
-  refused_with(SP.install_body(bytes), expected)
+  refused_with(SP.install_body(floor(), bytes), expected)
 
 def record_refused(record: SP.Record, expected: SP.ProvisionError) -> Bool:
   bytes_refused(SP.encode(record), expected)
@@ -163,7 +178,7 @@ def signed_canary() -> +List<U32>:
 def canary_installs() -> Bool:
   installed_canary(SP.install(anchor(), protected(), signed_canary())) &&
   hex_is(SW.payload(canary_hex()), SP.encode(canary())) &&
-  hex_is(SW.payload(String.take(canary_signed_hex(), 488n)), SP.encode(canary()))
+  hex_is(SW.payload(String.take(canary_signed_hex(), 496n)), SP.encode(canary()))
 
 def facts(+mode: U32, +links: U32, +owner: U32) -> SP.ConfigFacts:
   SP.ConfigFacts{mode, links, owner, 1000}
@@ -206,21 +221,22 @@ def bounded_accepted(+bytes: +List<U32>, maximum: Nat) -> Bool:
 
 def byte_faults() -> Bool:
   +bytes = SP.encode(canary())
-  bounded_refused(bytes, 243n) && bounded_accepted(bytes, 244n) &&
+  bounded_refused(bytes, 247n) && bounded_accepted(bytes, 248n) &&
   bytes_refused([1, 0, 0, 256], SP.RecordRange{}) &&
   bytes_refused([1, 0, 0], SP.RecordMisaligned{}) &&
   bytes_refused(without_last_word(bytes), SP.RecordLength{}) &&
   bytes_refused(List.append(&2, U32, bytes, [0, 0, 0, 0]), SP.RecordLength{}) &&
-  bytes_refused([3, 0, 0, 0, 1, 0, 0, 0], SP.RecordLength{}) &&
+  bytes_refused([4, 0, 0, 0, 2, 0, 0, 0], SP.RecordLength{}) &&
   bytes_refused(SP.words_bytes([1, 1, 2, 3, 0, 0, 0]), SP.RecordVersion{}) &&
   bytes_refused(SP.words_bytes([2, 1, 2, 3, 0, 0, 0]), SP.RecordVersion{}) &&
-  bytes_refused(SP.words_bytes([4, 1, 2, 3, 0, 0, 0]), SP.RecordVersion{}) &&
-  bytes_refused([4, 0, 0, 0], SP.RecordVersion{}) &&
-  bytes_refused([3, 0, 0, 0], SP.RecordLength{}) &&
+  bytes_refused(SP.words_bytes([3, 1, 2, 3, 0, 0, 0, 0]), SP.RecordVersion{}) &&
+  bytes_refused(SP.words_bytes([5, 2, 1, 2, 3, 0, 0, 0]), SP.RecordVersion{}) &&
+  bytes_refused([5, 0, 0, 0], SP.RecordVersion{}) &&
+  bytes_refused([4, 0, 0, 0], SP.RecordLength{}) &&
   bytes_refused([], SP.RecordLength{})
 
 def raw_programs(roles: +List<U32>, authorities: +List<U32>, placements: +List<U32>, programs: +List<U32>) -> +List<U32>:
-  SP.words_bytes(List.append(&2, U32, [3, 1, 2, 3], List.append(&2, U32, roles,
+  SP.words_bytes(List.append(&2, U32, [4, 2, 1, 2, 3], List.append(&2, U32, roles,
     List.append(&2, U32, authorities, List.append(&2, U32, placements, programs)))))
 
 def raw_record(roles: +List<U32>, authorities: +List<U32>, placements: +List<U32>) -> +List<U32>:
@@ -238,6 +254,7 @@ def program_words_faults() -> Bool:
     SP.RecordLength{})
 
 def word_faults() -> Bool:
+  bytes_refused(SP.words_bytes([4, 0, 1, 2, 3, 1, 1, 101, 1, 1, 101, 5, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]), SP.RecordZero{}) &&
   bytes_refused(raw_record([1, 1, 101], [1, 3, 101, 5], [0]), SP.RecordKind{}) &&
   bytes_refused(raw_record([1, 1, 101], [1, 1, 101, 5], [1, 3, 10, 4, 5]), SP.RecordKind{}) &&
   bytes_refused(raw_record([1, 1, 0], [1, 1, 101, 5], [0]), SP.RecordZero{}) &&
@@ -247,10 +264,10 @@ def word_faults() -> Bool:
   program_words_faults()
 
 def with_roles(roles: C.RoleMap) -> SP.Record:
-  SP.Record{TF.stamp(), roles, IT.directory(), IT.placements(), programs()}
+  SP.Record{2, TF.stamp(), roles, IT.directory(), IT.placements(), programs()}
 
 def with_programs(given: SR.Programs) -> SP.Record:
-  SP.Record{TF.stamp(), OT.roles(), IT.directory(), IT.placements(), given}
+  SP.Record{2, TF.stamp(), OT.roles(), IT.directory(), IT.placements(), given}
 
 def one(+index: Nat, rest: SR.Programs) -> SR.Programs:
   SR.Program{index, abc_digest(), rest}
@@ -269,10 +286,10 @@ def consistency() -> Bool:
   record_refused(with_roles(C.Role{0n, Iss.Principal{101n}, C.NoRoles{}}), SP.RolesInvalid{}) &&
   record_refused(with_roles(C.NoRoles{}), SP.RolesEmpty{}) &&
   record_refused(with_roles(C.Role{1n, Iss.Principal{101n}, C.Role{2n, Iss.Principal{999n}, C.NoRoles{}}}), SP.RoleWithoutAuthority{}) &&
-  record_refused(SP.Record{TF.stamp(), OT.roles(), IT.directory(),
+  record_refused(SP.Record{2, TF.stamp(), OT.roles(), IT.directory(),
     Iss.Placements{Iss.SourceAt{TF.source_object(), IT.read9()}, IT.placements()}, programs()}, SP.PlacementsInvalid{}) &&
   program_consistency() &&
-  installed_canary(SP.install_body(SP.encode(with_roles(OT.roles()))))
+  installed_canary(SP.install_body(floor(), SP.encode(with_roles(OT.roles()))))
 
 def adopted_roles(adoption: SP.Adoption) -> Bool:
   match adoption:
@@ -286,16 +303,16 @@ def not_adopted(adoption: SP.Adoption, expected: SP.ProvisionError) -> Bool:
     case SP.Adopted{_, _}: False{}
 
 def install_record(record: SP.Record) -> SP.Installed:
-  SP.install_body(SP.encode(record))
+  SP.install_body(floor(), SP.encode(record))
 
 def adoption(+s: JO.Stages) -> Bool:
   +running = JO.stage_running(s)
   adopted_roles(SP.adopt(running, install_record(canary()))) &&
-  not_adopted(SP.adopt(running, install_record(SP.Record{TF.stamp(), C.Role{1n, Iss.Principal{102n}, C.NoRoles{}},
+  not_adopted(SP.adopt(running, install_record(SP.Record{2, TF.stamp(), C.Role{1n, Iss.Principal{102n}, C.NoRoles{}},
     IT.directory_without_source(), IT.placements(), one(1n, SR.NoPrograms{})})), SP.IssuerMismatch{}) &&
-  not_adopted(SP.adopt(running, install_record(SP.Record{T.Stamp{1n, 2n, 4n}, OT.roles(), IT.directory(), IT.placements(), programs()})),
+  not_adopted(SP.adopt(running, install_record(SP.Record{2, T.Stamp{1n, 2n, 4n}, OT.roles(), IT.directory(), IT.placements(), programs()})),
     SP.IssuerMismatch{}) &&
-  not_adopted(SP.adopt(running, install_record(SP.Record{TF.stamp(), OT.roles(), IT.directory(),
+  not_adopted(SP.adopt(running, install_record(SP.Record{2, TF.stamp(), OT.roles(), IT.directory(),
     Iss.Placements{Iss.SourceAt{TF.source_object(), IT.read5()}, Iss.NoPlacements{}}, programs()})), SP.IssuerMismatch{}) &&
   not_adopted(SP.adopt(LH.initial(), install_record(canary())), SP.NoIssuer{}) &&
   not_adopted(SP.adopt(running, SP.install(anchor(), facts(33152, 2, 1000), signed_canary())), SP.ConfigLinked{})
@@ -310,7 +327,7 @@ def signed_too_long(signed: SP.Signed) -> Bool:
     case SP.Unsigned{SP.RecordTooLong{}}: True{}
     case _: False{}
 
-# The first byte of the signed canary changed from version 3 to 2: a body the
+# The first byte of the signed canary changed from version 4 to 2: a body the
 # signature does not cover.
 def replace_first(bytes: +List<U32>) -> +List<U32>:
   match bytes:
@@ -326,20 +343,45 @@ def zeros(n: Nat, rest: +List<U32>) -> +List<U32>:
     case 1n+m: zeros(m, 0 <> rest)
 
 # Another key, a missing signing context, an altered body, the body alone and
-# files shorter than a signature are SignatureInvalid; a signed version 2 body
+# files shorter than a signature are SignatureInvalid; a signed version 3 body
 # is still refused by the body checks; an empty anchor verifies nothing; the
 # size and byte range are checked before the signature.
 def signature_faults() -> Bool:
   hex_refused(canary_other_key_hex(), SP.SignatureInvalid{}) &&
   hex_refused(canary_no_context_hex(), SP.SignatureInvalid{}) &&
-  hex_refused(canary_v2_signed_hex(), SP.RecordVersion{}) &&
+  hex_refused(canary_v3_signed_hex(), SP.RecordVersion{}) &&
   refused_with(SP.install(anchor(), protected(), tampered()), SP.SignatureInvalid{}) &&
   hex_refused(canary_hex(), SP.SignatureInvalid{}) &&
   refused_with(SP.install(anchor(), protected(), []), SP.SignatureInvalid{}) &&
   refused_with(SP.install(anchor(), protected(), zeros(63n, [])), SP.SignatureInvalid{}) &&
   refused_with(SP.install(SP.no_anchor(), protected(), signed_canary()), SP.SignatureInvalid{}) &&
   refused_with(SP.install(anchor(), protected(), 256 <> zeros(63n, [])), SP.RecordRange{}) &&
-  signed_too_long(SP.signed_body(signed_canary(), anchor(), 307n))
+  signed_too_long(SP.signed_body(signed_canary(), anchor(), 311n))
+
+# --- Freshness -----------------------------------------------------------------------
+
+def with_serial(+serial: U32) -> SP.Record:
+  SP.Record{serial, TF.stamp(), OT.roles(), IT.directory(), IT.placements(), programs()}
+
+def no_fault(found: Maybe<&2, SP.ProvisionError>) -> Bool:
+  Bool.not(Maybe.is_some(&2, SP.ProvisionError, found))
+
+# A record below the floor is RecordStale and one at or above it installs;
+# raising the floor past the canary retires it; staleness is reported before
+# any consistency fault; the U32 limits hold at both ends. These run on bodies
+# (each signature verification costs about 40 s in the Genode lane's QEMU);
+# `stale_stops` sends the signed stale record through `install` and the wire.
+def freshness_faults() -> Bool:
+  bytes_refused(SP.encode(with_serial(1)), SP.RecordStale{}) &&
+  installed_canary(SP.install_body(floor(), SP.encode(with_serial(3)))) &&
+  refused_with(SP.install_body(3, SP.encode(canary())), SP.RecordStale{}) &&
+  installed_canary(SP.install_body(1, SP.encode(canary()))) &&
+  fault_is(SP.fresh_fault(3, with_roles(C.NoRoles{})), SP.RecordStale{}) &&
+  fault_is(SP.fresh_fault(2, with_roles(C.NoRoles{})), SP.RolesEmpty{}) &&
+  no_fault(SP.fresh_fault(0, canary())) &&
+  no_fault(SP.fresh_fault(4294967295, with_serial(4294967295))) &&
+  fault_is(SP.fresh_fault(4294967295, with_serial(4294967294)), SP.RecordStale{}) &&
+  installed_canary(SP.install_body(4294967295, SP.encode(with_serial(4294967295))))
 
 # --- Wire ----------------------------------------------------------------------------
 
@@ -384,21 +426,29 @@ def bad_hex_stops(+s: JO.Stages) -> Bool:
   String.eq(OTW.run(fresh(s), [provision_frame("33152", "1", "0g"), good()]),
     OTW.line("1", "ERROR", "1", "-") ++ OTW.line("2", "STOPPED", "1", "-"))
 
+# A protected file holding a correctly signed record below the floor: the
+# floor reaches `install` through the anchor the wire holds.
+def stale_stops(+s: JO.Stages) -> Bool:
+  String.eq(OTW.run(fresh(s), [provision_frame("33152", "1", canary_stale_signed_hex()), good()]),
+    OTW.line("1", "PROVISION_REFUSED", "1", "-") ++ OTW.line("2", "STOPPED", "1", "-"))
+
 def wire_refusals(+s: JO.Stages) -> Bool:
-  control_first(s) && drain_first(s) && refused_stops(s) && unsigned_stops(s) && reprovision_stops(s) && bad_hex_stops(s)
+  control_first(s) && drain_first(s) && refused_stops(s) && unsigned_stops(s) && stale_stops(s) && reprovision_stops(s) &&
+    bad_hex_stops(s)
 
 def provision_checks(+s: JO.Stages) -> IO(Unit):
   do IO<Unit>:
     Test.check(canary_installs(), "SupervisorProvision canary record installs its role map and program digests over the canary issuer root")
     Test.check(config_faults(), "SupervisorProvision refuses unprotected configuration facts before decoding")
     Test.check(signature_faults(), "SupervisorProvision refuses records not signed by the pinned operator key over the signing context")
+    Test.check(freshness_faults(), "SupervisorProvision refuses records whose serial is below the pinned floor before any consistency fault")
     Test.check(byte_faults(), "SupervisorProvision refuses oversized, out-of-range, misaligned and short records")
-    Test.check(word_faults(), "SupervisorProvision refuses unknown kinds, zero principals and short sections")
+    Test.check(word_faults(), "SupervisorProvision refuses unknown kinds, zero serials or principals and short sections")
     Test.check(consistency(), "SupervisorProvision refuses invalid, empty or unbacked role maps, ambiguous placements and unpinned role programs")
     Test.check(adoption(s), "SupervisorProvision adopts only a record whose root is the retained issuer's root")
     Test.check(provisioned_flow(s), "SupervisorWire provisions first, then attributes revokes through the installed map")
-    Test.check(wire_refusals(s), "SupervisorWire refuses unprovisioned frames, refused or unsigned records and reprovisioning")
-    IO.print("SupervisorProvision: 9 checks passed")
+    Test.check(wire_refusals(s), "SupervisorWire refuses unprovisioned frames, refused, unsigned or stale records and reprovisioning")
+    IO.print("SupervisorProvision: 10 checks passed")
 
 def main() -> IO(Unit):
   provision_checks(JO.owner_stages())

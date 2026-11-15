@@ -1,0 +1,11 @@
+PASS: SupervisorProvision canary record installs its role map and program digests over the canary issuer root
+PASS: SupervisorProvision refuses unprotected configuration facts before decoding
+PASS: SupervisorProvision refuses records not signed by the pinned operator key over the signing context
+PASS: SupervisorProvision refuses records whose serial is below the pinned floor before any consistency fault
+PASS: SupervisorProvision refuses oversized, out-of-range, misaligned and short records
+PASS: SupervisorProvision refuses unknown kinds, zero serials or principals and short sections
+PASS: SupervisorProvision refuses invalid, empty or unbacked role maps, ambiguous placements and unpinned role programs
+PASS: SupervisorProvision adopts only a record whose root is the retained issuer's root
+PASS: SupervisorWire provisions first, then attributes revokes through the installed map
+PASS: SupervisorWire refuses unprovisioned frames, refused, unsigned or stale records and reprovisioning
+SupervisorProvision: 10 checks passed

@@ -1,0 +1,8 @@
+qjs exit 0 seconds 41.2
+0	Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+0	ALL LIBRARY TESTS PASSED
+EXIT	0
+base f56a3f70 on the same machine:
+0	ALL LIBRARY TESTS PASSED
+EXIT	0
+qjs seconds 42.6

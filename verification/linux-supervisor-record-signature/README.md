@@ -1,5 +1,9 @@
 # Supervisor provisioning record signed by a pinned operator key
 
+> Superseded in part: version 4 adds a serial checked against a floor pinned
+> beside the key, so an older signed record below the floor is now refused.
+> See the [record serial record](../linux-supervisor-record-serial/README.md).
+
 Example: the operator signs the provisioning record on a machine that holds
 the operator's Ed25519 secret key, and installs the signed file as
 `/etc/writ/supervisor.record`. The supervisor's provisioning module pins the

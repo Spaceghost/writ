@@ -36,7 +36,9 @@ role index was then still registered by the caller (`writ_roles_add`). The
 record described here is version 1; version 2 adds program pins (see the
 [role program record](../linux-supervisor-role-programs/README.md)), and
 version 3 is signed by the operator key the provisioning module pins (see the
-[record signature record](../linux-supervisor-record-signature/README.md)). The
+[record signature record](../linux-supervisor-record-signature/README.md)), and
+version 4 adds a serial the module checks against a pinned floor (see the
+[record serial record](../linux-supervisor-record-serial/README.md)). The
 driver now launches role processes itself, see the
 [role launch record](../linux-supervisor-roles/README.md). Clock samples
 are still scripted.

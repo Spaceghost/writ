@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -333,7 +333,7 @@
+ 
+ def record_words(+words: +List<U32>) -> RecordRead:
+   match words:
+-    case +version <> +serial <> +graph <> +policy <> +authority <> +count <> +rest:
++    case +version <> +graph <> +policy <> +authority <> +serial <> +count <> +rest:
+       record_versioned(U32.is_eq(version, record_version()), serial,
+         T.Stamp{U32.to_nat(graph), U32.to_nat(policy), U32.to_nat(authority)}, count, rest)
+     case +version <> _:

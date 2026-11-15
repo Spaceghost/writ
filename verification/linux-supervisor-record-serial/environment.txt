@@ -1,0 +1,19 @@
+kernel: Linux 7.2.9-1-MANJARO x86_64
+gcc: gcc (GCC) 16.2.1 20260810
+clang: clang version 23.1.1
+glibc: ldd (GNU libc) 2.44
+node: v26.10.0
+bend: 2.0.39
+CapEff: 0000000000000000
+uid: nonroot
+openssl (test only): 3.6.5
+python cryptography (fixtures): 50.0.2
+786970af047ecdf9e4d98c5fbc45b0f21022d7392c663b4eb41cf4273b7d49a6  contrib/native-hosts/linux/supervisor_owner.c
+27b4e4ca5503e75939997c041e0f1da10dec77dbeca16a237e12bedbc7599c83  contrib/native-hosts/linux/supervisor-owner-test.c
+2574ab59578c122a4024648aff0834d51c2c683cd45c6a3d7b8eef56a9b7d45e  contrib/native-hosts/linux/Makefile
+26c77e2190b1fd08ede350160963a7744f035c1107d51504304a31812f9444b8  hosts/linux/monitor/SupervisorProvision.bend
+219b993e3a6aa13ce3ff9bd4ffa80fce5a34b16eb9b492978afe4c4fbb4f9b5f  hosts/linux/monitor/SupervisorProvisionTests.bend
+e36f2d6f128a14572d7bb96cc30071adf0b1d7517f30d89bdf39e5ee836b8dad  hosts/linux/monitor/SupervisorWire.bend
+cb2b9e6047f89b960df037aa067378a0e34d2a69e140e7dadff4ac15ffe4af35  hosts/linux/monitor/SupervisorDriverModule.bend
+binary 87590b1efc480a09554f5df6f44fe2ea4670702c40dc6fb015ba8223982bc86a  supervisor-owner-test (gcc)
+module 40b06e5d891006cf18e70152992d7ea0d52122b327c9905af3d612880f829d5a  supervisor-driver.mjs

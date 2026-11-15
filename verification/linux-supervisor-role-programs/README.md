@@ -19,7 +19,9 @@ Current gap: the record decides which program each role runs, but the record
 itself is still accepted on file facts. Its writer is trusted, not
 authenticated, and so the pins are only as good as that file's protection.
 (Record version 3 is now signed by a pinned operator key; see the
-[record signature record](../linux-supervisor-record-signature/README.md).)
+[record signature record](../linux-supervisor-record-signature/README.md).
+Version 4 adds a serial checked against a pinned floor; see the
+[record serial record](../linux-supervisor-record-serial/README.md).)
 A digest names bytes, not an author or a build. The program's own libraries
 and interpreter (the dynamic loader, shared objects) are not pinned. An
 admitted index stays bound for the interpreter's lifetime, the issuer is

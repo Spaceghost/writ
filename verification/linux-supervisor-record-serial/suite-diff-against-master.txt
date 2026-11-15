@@ -1,0 +1,12 @@
+2176a2177
+> PASS: SupervisorProvision refuses records whose serial is below the pinned floor before any consistency fault
+2178c2179
+< PASS: SupervisorProvision refuses unknown kinds, zero principals and short sections
+---
+> PASS: SupervisorProvision refuses unknown kinds, zero serials or principals and short sections
+2182,2183c2183,2184
+< PASS: SupervisorWire refuses unprovisioned frames, refused or unsigned records and reprovisioning
+< SupervisorProvision: 9 checks passed
+---
+> PASS: SupervisorWire refuses unprovisioned frames, refused, unsigned or stale records and reprovisioning
+> SupervisorProvision: 10 checks passed

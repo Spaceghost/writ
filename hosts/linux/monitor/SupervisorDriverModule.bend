@@ -16,7 +16,8 @@ import ./SupervisorProvisionTests.bend as PT
 # authority. The pinned operator key is the SYNTHETIC RFC 8032 TEST 1 public
 # key (`SupervisorProvisionTests.anchor`), whose secret is published, so the
 # test can sign its own record and nothing it signs authenticates a real
-# operator. The driver's first frame must be `PROVISION` with a protected
+# operator; the pinned floor is serial 2, so a record signed with serial 1 is
+# refused as stale. The driver's first frame must be `PROVISION` with a protected
 # record signed under that key whose issuer root is that synthetic issuer's
 # root; only then does the record's role map attribute channel messages
 # (SupervisorProvision). The issuer itself is not installed by the record and

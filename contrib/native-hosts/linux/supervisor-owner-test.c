@@ -104,17 +104,19 @@ static const uint32_t write_words[APPROVAL_WORDS] = {
 };
 static unsigned char submit_source[4 * APPROVAL_WORDS], submit_write[4 * APPROVAL_WORDS];
 
-/* SupervisorProvisionTests.canary(): version 3, live 1/2/3, roles 1 -> 101
+/* SupervisorProvisionTests.canary(): version 4, serial 2 (the floor the
+   driver module pins), live 1/2/3, roles 1 -> 101
    and 2 -> 102, the canary directory (five authorities), placements (four)
    and the program pins: role 1 SHA-256("abc"), role 2 SHA-256(""). The test
    writes this record with both pins replaced by the digest of its own role
    program (see make_records); the constant pins are checked against the
    native SHA-256 instead. */
-#define CANARY_WORDS 61
-#define PIN_ROLE1 44
-#define PIN_ROLE2 53
+#define CANARY_WORDS 62
+#define SERIAL_WORD 1
+#define PIN_ROLE1 45
+#define PIN_ROLE2 54
 static const uint32_t canary_words[CANARY_WORDS] = {
-    3, 1, 2, 3, 2, 1, 101, 2, 102,
+    4, 2, 1, 2, 3, 2, 1, 101, 2, 102,
     5, 1, 101, 5, 2, 102, 6, 1, 103, 9, 1, 104, 7, 2, 105, 5,
     4, 1, 10, 4, 5, 1, 11, 4, 7, 2, 20, 8, 6, 2, 20, 9, 6,
     2, 1, 3128432319u, 2399260650u, 1094795486u, 1571693091u, 2953011619u, 2518121116u, 3021012833u, 4060091821u,
@@ -177,7 +179,7 @@ static void sign_record(const unsigned char secret[32], const unsigned char *bod
 
 static const char *const record_names[] = {
     "canary", "writable", "linked", "linked-too", "fifo", "mismatch", "symlink", "oversized", "via",
-    "unsigned", "rewritten", "other-key",
+    "unsigned", "rewritten", "other-key", "stale",
     "role-program", "shared-program", "linked-program", "linked-program-too", "notelf", "program-symlink"
 };
 
@@ -256,11 +258,18 @@ static void make_records(void)
     write_record("unsigned", body, sizeof body, 0600);
     /* Rewritten after signing, as a process of the supervisor's user could:
        role 2 now names principal 101. */
-    bytes[4 * 8] = 101;
+    bytes[4 * 9] = 101;
     write_record("rewritten", bytes, sizeof bytes, 0600);
     sign_record(other_secret, body, sizeof body, bytes);
     write_record("other-key", bytes, sizeof bytes, 0600);
-    words[3] = 4; /* live stamp authority 4: not the canary issuer's root */
+    /* Serial 1, below the pinned floor: a superseded record, correctly
+       signed, that a process of the supervisor's user could put back. */
+    words[SERIAL_WORD] = 1;
+    record_bytes(words, CANARY_WORDS, body);
+    sign_record(operator_secret, body, sizeof body, bytes);
+    write_record("stale", bytes, sizeof bytes, 0600);
+    words[SERIAL_WORD] = 2;
+    words[4] = 4; /* live stamp authority 4: not the canary issuer's root */
     record_bytes(words, CANARY_WORDS, body);
     sign_record(operator_secret, body, sizeof body, bytes);
     write_record("mismatch", bytes, sizeof bytes, 0600);
@@ -882,6 +891,8 @@ static void provisioning(void)
                     "signed record with role 2 rewritten to 101 afterwards: PROVISION_REFUSED, fail-stop");
     provision_fails("other-key", 1, WRIT_OWNER_PROVISION_REFUSED, 0, "other_key_record_refused",
                     "record signed by the RFC 8032 TEST 2 key: PROVISION_REFUSED, fail-stop");
+    provision_fails("stale", 1, WRIT_OWNER_PROVISION_REFUSED, 0, "stale_record_refused",
+                    "operator-signed record with serial 1, below the pinned floor 2: PROVISION_REFUSED, fail-stop");
     provision_fails("symlink", 0, WRIT_OWNER_ERROR, ELOOP, "symlink_record_not_followed",
                     "symlink to the canary record: not opened (ELOOP), nothing sent, fail-stop");
     provision_fails("oversized", 0, WRIT_OWNER_ERROR, EFBIG, "oversized_record_not_sent",

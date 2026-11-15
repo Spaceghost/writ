@@ -12,8 +12,8 @@ import ../../../lib/Ed25519.bend as Ed
 #
 # Authority direction. The operator controls the supervisor's launch, which
 # includes the provisioning module that pins the operator's Ed25519 public key
-# (`Anchor`), and signs each provisioning record with the matching secret key
-# outside the supervisor. The native driver opens the record file without
+# and the lowest record serial it still accepts (`Anchor`), and signs each
+# provisioning record with the matching secret key outside the supervisor. The native driver opens the record file without
 # following a symlink, reports what `fstat` says about it (`ConfigFacts`) and
 # forwards its bytes; it judges neither, and it never holds a key. This module
 # decides:
@@ -24,11 +24,14 @@ import ../../../lib/Ed25519.bend as Ed
 #      and every byte before it (`signature_fault`, lib/Ed25519.bend). Nothing
 #      in the record is parsed before this;
 #   3. whether the signed bytes are one well-formed provisioning record (`decode`);
-#   4. whether the record is internally consistent (`record_fault`): a valid,
+#   4. whether the record's serial is at least the anchor's floor
+#      (`fresh_fault`), so a record the operator has superseded by raising the
+#      floor is refused (`RecordStale`);
+#   5. whether the record is internally consistent (`record_fault`): a valid,
 #      nonempty role map whose every principal is an authority in the record's
 #      own directory, unambiguous placements, and exactly one program digest
 #      for each role and none for anything else;
-#   5. whether the record's issuer root (live stamp, directory, placements)
+#   6. whether the record's issuer root (live stamp, directory, placements)
 #      is exactly the root of the issuer the owner retains (`adopt`).
 # Only then does the role map become the owner's, and the program digests the
 # wire's launch admission (`SupervisorRoleLaunch`). Nothing else installs
@@ -43,18 +46,27 @@ import ../../../lib/Ed25519.bend as Ed
 # running as the supervisor's user that rewrites the file produces a record
 # that is refused (`SignatureInvalid`). The file facts are still required.
 #
-# Not established. The pinned key is as trustworthy as the provisioning module
-# the operator launches; nothing here protects or rotates it. A signature has
-# no freshness: an older record signed by the same key verifies again, so a
-# rollback to a previously signed record is not detected. The issuer that runs
-# is still the synthetic canary issuer grown from this root.
+# Rollback. The serial is signed with the rest of the record, and the floor
+# is pinned beside the key, not stored anywhere the supervisor's user can
+# write: a state file that user could rewrite would let the same process that
+# substitutes an old record also lower the mark. So a substituted record whose
+# serial is below the floor is refused (`RecordStale`), whatever key signed it.
+#
+# Not established. The pinned key and floor are as trustworthy as the
+# provisioning module the operator launches; nothing here protects or rotates
+# them. A record at or above the floor is accepted even when the operator has
+# since signed a newer one: rollback is detected only once the operator raises
+# the floor, which means launching an updated module. No high-water mark is
+# kept between runs. The issuer that runs is still the synthetic canary issuer
+# grown from this root.
 #
 # --- Record layout ---------------------------------------------------------------
 #
 # The file is the record body followed by a 64-byte Ed25519 signature (RFC
 # 8032) over `signing_context()` followed by the body. The body is
 # little-endian U32 words, as the control codec (SupervisorOwner):
-#   version (3)
+#   version (4)
+#   serial: nonzero, chosen by the operator, larger for each newer record
 #   live stamp: graph, policy, authority
 #   role count R, then R x (role index, principal)
 #   authority count A, then A x (kind, principal, domain)
@@ -63,15 +75,16 @@ import ../../../lib/Ed25519.bend as Ed
 #       kind 1 SourceAt (read domain), 2 DestinationAt (write domain)
 #   program count G, then G x (role index, 8 digest words)
 #       the SHA-256 of the program that role runs, as big-endian words
-# Nothing may follow the programs. Versions 1 (no programs) and 2 (unsigned)
-# are refused. At most `max_record_bytes()` bytes with the signature. A
+# Nothing may follow the programs. Versions 1 (no programs), 2 (unsigned) and 3
+# (no serial) are refused. At most `max_record_bytes()` bytes with the signature. A
 # principal is never 0.
 # Check order: too long -> RecordTooLong; a byte above 255 -> RecordRange;
 # fewer bytes than a signature, or a signature that does not verify ->
 # SignatureInvalid; then, in the signed body: a remainder of bytes ->
 # RecordMisaligned; version -> RecordVersion; a section
 # shorter than its count, or trailing words -> RecordLength; an unknown kind ->
-# RecordKind; a zero principal -> RecordZero.
+# RecordKind; a zero serial or principal -> RecordZero. Then, in the decoded
+# record: a serial below the anchor's floor -> RecordStale.
 
 # What the native driver observed about the opened configuration file. `mode`
 # is `st_mode`, `links` `st_nlink` (saturated at 2^32 - 1), `owner` `st_uid`
@@ -99,14 +112,16 @@ type ProvisionError is Data:
   NoIssuer{}
   IssuerMismatch{}
   SignatureInvalid{}
+  RecordStale{}
 
-# The operator's Ed25519 public key (32 bytes), pinned by the provisioning
-# module the operator launches. It is never read from the record or a frame.
+# The operator's Ed25519 public key (32 bytes) and the lowest record serial
+# still accepted (`floor`), both pinned by the provisioning module the
+# operator launches. Neither is ever read from the record, a frame or a file.
 type Anchor is Data:
-  Anchor{key: +List<U32>}
+  Anchor{key: +List<U32>, floor: U32}
 
 type Record is Data:
-  Record{live: T.Stamp, roles: C.RoleMap, directory: Iss.Authorities, placements: Iss.Placements,
+  Record{serial: U32, live: T.Stamp, roles: C.RoleMap, directory: Iss.Authorities, placements: Iss.Placements,
     programs: SR.Programs}
 
 type RecordRead is Data:
@@ -124,7 +139,7 @@ type Adoption is Data:
   NotAdopted{reason: ProvisionError}
 
 def record_version() -> U32:
-  3
+  4
 
 # The whole file: body and signature.
 def max_record_bytes() -> Nat:
@@ -146,7 +161,7 @@ def signing_context() -> +List<U32>:
 # An anchor that authenticates nothing (no 32-byte key verifies under it),
 # for interpreters that are never provisioned from a record.
 def no_anchor() -> Anchor:
-  Anchor{[]}
+  Anchor{[], 0}
 
 # --- Configuration facts ------------------------------------------------------------
 
@@ -272,38 +287,43 @@ def take_programs(+words: +List<U32>, done: Bool, +count: U32) -> ProgramsTaken:
 
 # --- Record ------------------------------------------------------------------------
 
-def finish(+live: T.Stamp, +roles: C.RoleMap, +directory: Iss.Authorities, +placements: Iss.Placements,
+def finish(+serial: U32, +live: T.Stamp, +roles: C.RoleMap, +directory: Iss.Authorities, +placements: Iss.Placements,
     taken: ProgramsTaken) -> RecordRead:
   match taken:
-    case ProgramsTaken{programs, []}: RecordRead{Record{live, roles, directory, placements, programs}}
+    case ProgramsTaken{programs, []}: RecordRead{Record{serial, live, roles, directory, placements, programs}}
     case ProgramsTaken{_, _}: RecordBad{RecordLength{}}
     case ProgramsBad{reason}: RecordBad{reason}
 
-def after_placements(+live: T.Stamp, +roles: C.RoleMap, +directory: Iss.Authorities, taken: PlacementsTaken) -> RecordRead:
+def after_placements(+serial: U32, +live: T.Stamp, +roles: C.RoleMap, +directory: Iss.Authorities, taken: PlacementsTaken) -> RecordRead:
   match taken:
     case PlacementsTaken{placements, +count <> +rest}:
-      finish(live, roles, directory, placements, take_programs(rest, U32.is_eq(count, 0), count))
+      finish(serial, live, roles, directory, placements, take_programs(rest, U32.is_eq(count, 0), count))
     case PlacementsTaken{_, _}: RecordBad{RecordLength{}}
     case PlacementsBad{reason}: RecordBad{reason}
 
-def after_authorities(+live: T.Stamp, +roles: C.RoleMap, taken: AuthoritiesTaken) -> RecordRead:
+def after_authorities(+serial: U32, +live: T.Stamp, +roles: C.RoleMap, taken: AuthoritiesTaken) -> RecordRead:
   match taken:
     case AuthoritiesTaken{directory, +count <> +rest}:
-      after_placements(live, roles, directory, take_placements(rest, U32.is_eq(count, 0), count))
+      after_placements(serial, live, roles, directory, take_placements(rest, U32.is_eq(count, 0), count))
     case AuthoritiesTaken{_, _}: RecordBad{RecordLength{}}
     case AuthoritiesBad{reason}: RecordBad{reason}
 
-def after_roles(+live: T.Stamp, taken: RolesTaken) -> RecordRead:
+def after_roles(+serial: U32, +live: T.Stamp, taken: RolesTaken) -> RecordRead:
   match taken:
     case RolesTaken{roles, +count <> +rest}:
-      after_authorities(live, roles, take_authorities(rest, U32.is_eq(count, 0), count))
+      after_authorities(serial, live, roles, take_authorities(rest, U32.is_eq(count, 0), count))
     case RolesTaken{_, _}: RecordBad{RecordLength{}}
     case RolesBad{reason}: RecordBad{reason}
 
-def record_versioned(current: Bool, +live: T.Stamp, +count: U32, +rest: +List<U32>) -> RecordRead:
+def record_serial(zero: Bool, +serial: U32, +live: T.Stamp, +count: U32, +rest: +List<U32>) -> RecordRead:
+  match zero:
+    case True{}: RecordBad{RecordZero{}}
+    case False{}: after_roles(serial, live, take_roles(rest, U32.is_eq(count, 0), count))
+
+def record_versioned(current: Bool, +serial: U32, +live: T.Stamp, +count: U32, +rest: +List<U32>) -> RecordRead:
   match current:
     case False{}: RecordBad{RecordVersion{}}
-    case True{}: after_roles(live, take_roles(rest, U32.is_eq(count, 0), count))
+    case True{}: record_serial(U32.is_eq(serial, 0), serial, live, count, rest)
 
 # A record too short for its header: a current version is a length fault.
 def short_record(current: Bool) -> RecordRead:
@@ -313,8 +333,8 @@ def short_record(current: Bool) -> RecordRead:
 
 def record_words(+words: +List<U32>) -> RecordRead:
   match words:
-    case +version <> +graph <> +policy <> +authority <> +count <> +rest:
-      record_versioned(U32.is_eq(version, record_version()),
+    case +version <> +serial <> +graph <> +policy <> +authority <> +count <> +rest:
+      record_versioned(U32.is_eq(version, record_version()), serial,
         T.Stamp{U32.to_nat(graph), U32.to_nat(policy), U32.to_nat(authority)}, count, rest)
     case +version <> _:
       short_record(U32.is_eq(version, record_version()))
@@ -392,7 +412,7 @@ def programs_consistent(+roles: C.RoleMap, +programs: SR.Programs) -> Bool:
 # Public entry point (exported for tests): None when the record is consistent.
 def record_fault(record: Record) -> Maybe<&2, ProvisionError>:
   match record:
-    case Record{_, +roles, +directory, +placements, +programs}:
+    case Record{_, _, +roles, +directory, +placements, +programs}:
       first_fault(Bool.not(C.valid_roles(roles)), RolesInvalid{},
         first_fault(roles_empty(roles), RolesEmpty{},
           first_fault(Bool.not(roles_backed(roles, directory)), RoleWithoutAuthority{},
@@ -402,19 +422,26 @@ def record_fault(record: Record) -> Maybe<&2, ProvisionError>:
 def install_record(fault: Maybe<&2, ProvisionError>, record: Record) -> Installed:
   match fault record:
     case Some{reason} _: Refused{reason}
-    case None{} Record{live, roles, directory, placements, programs}:
+    case None{} Record{_, live, roles, directory, placements, programs}:
       Installed{roles, programs, Iss.empty(live, directory, placements)}
 
-def install_read(read: RecordRead) -> Installed:
+# Exported for tests: None when the record's serial reaches `floor` and the
+# record is consistent. Staleness is reported first: a superseded record is
+# refused as stale whatever else is wrong with it.
+def fresh_fault(+floor: U32, +record: Record) -> Maybe<&2, ProvisionError>:
+  match record:
+    case Record{+serial, _, _, _, _, _}: first_fault(U32.is_lt(serial, floor), RecordStale{}, record_fault(record))
+
+def install_read(+floor: U32, read: RecordRead) -> Installed:
   match read:
-    case RecordRead{+record}: install_record(record_fault(record), record)
+    case RecordRead{+record}: install_record(fresh_fault(floor, record), record)
     case RecordBad{reason}: Refused{reason}
 
 # Exported implementation helper (and for tests): the body checks `install`
-# applies once the signature has verified. It is not an entry point: bytes
-# that were not authenticated go through `install`.
-def install_body(+body: +List<U32>) -> Installed:
-  install_read(decode(body))
+# applies once the signature has verified, with the anchor's `floor`. It is
+# not an entry point: bytes that were not authenticated go through `install`.
+def install_body(+floor: U32, +body: +List<U32>) -> Installed:
+  install_read(floor, decode(body))
 
 # --- Signature -----------------------------------------------------------------------
 
@@ -442,7 +469,7 @@ def signed_verified(verified: Bool, +body: +List<U32>) -> Signed:
 
 def signed_split(pair: +List<U32> & +List<U32>, +anchor: Anchor) -> Signed:
   match pair anchor:
-    case (+body, +signature) Anchor{+key}:
+    case (+body, +signature) Anchor{+key, _}:
       signed_verified(Ed.verify(key, List.append(&2, U32, signing_context(), body), signature), body)
 
 def signed_sized(long_enough: Bool, +bytes: +List<U32>, +anchor: Anchor) -> Signed:
@@ -466,19 +493,24 @@ def signed_bounded(within: Bool, +bytes: +List<U32>, +anchor: Anchor) -> Signed:
 def signed_body(+bytes: +List<U32>, +anchor: Anchor, maximum: Nat) -> Signed:
   signed_bounded(LH.frame_within(maximum, bytes), bytes, anchor)
 
-def install_signed(signed: Signed) -> Installed:
+def anchor_floor(anchor: Anchor) -> U32:
+  match anchor:
+    case Anchor{_, floor}: floor
+
+def install_signed(+floor: U32, signed: Signed) -> Installed:
   match signed:
-    case Signed{body}: install_body(body)
+    case Signed{body}: install_body(floor, body)
     case Unsigned{reason}: Refused{reason}
 
 def install_checked(fault: Maybe<&2, ProvisionError>, +anchor: Anchor, +bytes: +List<U32>) -> Installed:
   match fault:
     case Some{reason}: Refused{reason}
-    case None{}: install_signed(signed_body(bytes, anchor, max_record_bytes()))
+    case None{}: install_signed(anchor_floor(anchor), signed_body(bytes, anchor, max_record_bytes()))
 
 # Public entry point: the file facts first (the bytes of a file that fails them
 # are never examined), then the signature under the pinned `anchor` (no
-# unsigned byte is parsed), then the record and its consistency.
+# unsigned byte is parsed), then the record, its serial against the anchor's
+# floor, and its consistency.
 def install(+anchor: Anchor, facts: ConfigFacts, +bytes: +List<U32>) -> Installed:
   install_checked(config_fault(facts), anchor, bytes)
 
@@ -611,8 +643,8 @@ def program_word_count(programs: SR.Programs) -> U32:
 # Exported test helper: the words a trusted writer produces for `record`.
 def record_words_of(record: Record) -> +List<U32>:
   match record:
-    case Record{T.Stamp{g, p, a}, +roles, +directory, +placements, +programs}:
-      List.append(&2, U32, [record_version(), nat_word(g), nat_word(p), nat_word(a), role_count(roles)],
+    case Record{serial, T.Stamp{g, p, a}, +roles, +directory, +placements, +programs}:
+      List.append(&2, U32, [record_version(), serial, nat_word(g), nat_word(p), nat_word(a), role_count(roles)],
         List.append(&2, U32, role_words(roles),
           List.append(&2, U32, [authority_count(directory)],
             List.append(&2, U32, authority_words(directory),

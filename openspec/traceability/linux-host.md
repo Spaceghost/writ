@@ -319,10 +319,26 @@ reviewed-only gap. The checks are:
   `Ed25519 refuses an altered message, an altered R and another key`,
   `Ed25519 refuses a non-canonical S, small-order keys and malformed keys and signatures`,
   `SupervisorProvision refuses records not signed by the pinned operator key over the signing context` and
-  `SupervisorWire refuses unprovisioned frames, refused or unsigned records and reprovisioning`.
+  `SupervisorWire refuses unprovisioned frames, refused, unsigned or stale records and reprovisioning` (renamed by the serial record).
 - Native cases: `protected_record_provisioned` (a signed record),
   `unsigned_record_refused`, `rewritten_record_refused` and
   `other_key_record_refused`.
+
+The [record serial record](../../verification/linux-supervisor-record-serial/README.md)
+closes part of that rollback gap. Record version 4 carries a nonzero serial
+inside the signed body, and the provisioning module pins a floor beside the
+key (`Anchor{key, floor}`). After the signature and decode, Bend refuses a
+record whose serial is below the floor (`RecordStale`) before any
+consistency check. The floor is pinned, not stored, so a process of the
+supervisor's user cannot lower it the way it could rewrite a state file. A
+superseded record at or above the floor is still accepted until the operator
+raises the floor by launching an updated module, and no high-water mark is
+kept between runs; LH-011 stays a reviewed-only gap. The checks are:
+
+- Bend: `SupervisorProvision refuses records whose serial is below the pinned floor before any consistency fault`,
+  `SupervisorProvision refuses unknown kinds, zero serials or principals and short sections` and
+  `SupervisorWire refuses unprovisioned frames, refused, unsigned or stale records and reprovisioning`.
+- Native case: `stale_record_refused`.
 
 ## Synthetic Rendezvous owner (LH-012, LH-013, LH-015 and LH-016)
 

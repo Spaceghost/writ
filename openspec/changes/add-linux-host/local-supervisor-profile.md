@@ -257,22 +257,27 @@ file's `fstat` facts and bytes, and Bend accepts only a regular, singly linked
 file owned by the supervisor's user and writable by no one else, holding a
 consistent record whose issuer root equals the retained issuer's. That root
 match is a consistency check, not authority: the canary root is public. Record
-version 3 is signed: the provisioning module pins the operator's Ed25519
+version 4 is signed: the provisioning module pins the operator's Ed25519
 public key, and Bend verifies the record's trailing signature over a fixed
 context and the body before parsing it (`lib/Ed25519.bend`), so a process
 of the supervisor's user cannot install a record the operator key did not
-sign (it can still substitute an older signed one). The key in
-every test is the RFC 8032 TEST 1 key, whose secret is published, and a
-signature carries no freshness, so an older signed record is accepted again.
+sign. The signed body carries a serial, and the module also pins a floor:
+a signed record whose serial is below it is refused (`RecordStale`). The
+floor lives in the module rather than a state file, because a file the
+supervisor's user could write would let the process that substitutes an old
+record also lower the mark. A superseded record at or above the floor is
+still accepted until the operator raises the floor, which means launching an
+updated module; no high-water mark is kept between runs. The key in every
+test is the RFC 8032 TEST 1 key, whose secret is published.
 Through
 the driver's API, workers are registered only as it launches them, after
 provisioning, and role processes only as it launches them after Bend admits
 their provisioned index (`SupervisorRoleLaunch.bend`); the receiver attributes
-through that table. The record (version 3) also pins each role's program by
+through that table. The record also pins each role's program by
 SHA-256: the driver hashes a sealed copy of the named file and executes only
 that copy, and Bend admits it only when the file is protected and the digest
-is the pin. Rollback to an older signed record, protecting and rotating the
-pinned key, and binding each worker lifetime and session to its principal
+is the pin. Rollback to a signed record at or above the floor, protecting and
+rotating the pinned key and floor, and binding each worker lifetime and session to its principal
 (LH-011) remain open. The issuer itself is still the synthetic canary with its
 in-process approvals, the submitting role is not told a new approval's id, and
 the clock samples are scripted. A deployment must serialize every relevant

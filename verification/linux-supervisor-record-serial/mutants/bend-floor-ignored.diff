@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorProvision.bend
++++ b/hosts/linux/monitor/SupervisorProvision.bend
+@@ -495,7 +495,7 @@
+ 
+ def anchor_floor(anchor: Anchor) -> U32:
+   match anchor:
+-    case Anchor{_, floor}: floor
++    case Anchor{_, floor}: 0
+ 
+ def install_signed(+floor: U32, signed: Signed) -> Installed:
+   match signed:

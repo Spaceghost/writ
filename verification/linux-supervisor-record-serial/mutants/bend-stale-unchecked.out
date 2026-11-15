@@ -1,0 +1,4 @@
+PASS: SupervisorProvision canary record installs its role map and program digests over the canary issuer root
+PASS: SupervisorProvision refuses unprotected configuration facts before decoding
+PASS: SupervisorProvision refuses records not signed by the pinned operator key over the signing context
+FAIL: SupervisorProvision refuses records whose serial is below the pinned floor before any consistency fault
