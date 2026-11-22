@@ -24,6 +24,7 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
     wchar_t *command, HANDLE *inherited, DWORD inherited_count, BOOL lpac);
 BOOL writ_worker_alive(const WRIT_WORKER *worker);
 BOOL writ_worker_matches(const WRIT_WORKER *worker, DWORD pid, HANDLE request_token);
+/* A failed initial resume must go directly to worker retirement. */
 BOOL writ_worker_resume(WRIT_WORKER *worker);
 BOOL writ_worker_terminate(WRIT_WORKER *worker);
 BOOL writ_worker_remove_network_filters(WRIT_WORKER *worker);

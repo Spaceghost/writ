@@ -777,7 +777,10 @@ int wmain(int argc, wchar_t **argv)
         goto done;
     if (!wrong_process_with_worker_token(&host.worker, path)) goto done;
     printf("NATIVE_PASS actual worker token presented by the wrong native process remains denied\n");
-    if (!writ_worker_resume(&host.worker)) goto done;
+    if (!writ_worker_resume(&host.worker)) {
+        fprintf(stderr, "FAIL worker resume error=%lu\n", GetLastError());
+        goto done;
+    }
     BOOL complete = FALSE;
     if (!read_report(report_read, ready, host.worker.process, 1,
         WRIT_PROBE_MOUNT_MASK | (lpac ? WRIT_PROBE_CONFINEMENT_MASK : 0), &report, &complete)) {

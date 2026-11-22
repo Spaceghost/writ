@@ -33,3 +33,9 @@ target_compile_definitions(writfs-transport-probe PRIVATE UNICODE _UNICODE _CRT_
 target_compile_options(writfs-transport-probe PRIVATE /W4 /sdl /guard:cf)
 target_link_options(writfs-transport-probe PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
 target_link_libraries(writfs-transport-probe PRIVATE advapi32)
+
+add_executable(writfs-worker-resume-test worker_resume_test.c worker.c isolation.c)
+target_compile_definitions(writfs-worker-resume-test PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00)
+target_compile_options(writfs-worker-resume-test PRIVATE /W4 /sdl /guard:cf)
+target_link_options(writfs-worker-resume-test PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
+target_link_libraries(writfs-worker-resume-test PRIVATE advapi32 bcrypt fwpuclnt rpcrt4 userenv ole32 ws2_32 OneCoreUAP)

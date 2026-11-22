@@ -517,9 +517,23 @@ BOOL writ_worker_matches(const WRIT_WORKER *worker, DWORD pid, HANDLE request_to
     return !worker->lpac || lpac_token(request_token, worker->app_sid, NULL, FALSE);
 }
 
+static BOOL resume_initial_thread(HANDLE thread)
+{
+    /* A successful API call can leave the thread suspended. Treat an
+       unexpected launch state as a failure and let the caller retire it. */
+    DWORD previous = ResumeThread(thread);
+    if (previous == 1) return TRUE;
+    if (previous != (DWORD)-1) SetLastError(ERROR_INVALID_STATE);
+    return FALSE;
+}
+
 BOOL writ_worker_resume(WRIT_WORKER *worker)
 {
-    return writ_worker_alive(worker) && ResumeThread(worker->thread) != (DWORD)-1;
+    if (!writ_worker_alive(worker)) {
+        SetLastError(ERROR_INVALID_STATE);
+        return FALSE;
+    }
+    return resume_initial_thread(worker->thread);
 }
 
 BOOL writ_worker_diagnostic(const WRIT_WORKER *worker, const unsigned short ports[4], DWORD phase)
@@ -622,8 +636,9 @@ BOOL writ_worker_diagnostic(const WRIT_WORKER *worker, const unsigned short port
     }
     printf("DIAGNOSTIC_PROFILE phase=%lu no_data=1 capabilities=registryRead win32k_disabled=0 pid=%lu\n",
         phase, process.dwProcessId);
+    stage = "resume";
+    if (!resume_initial_thread(process.hThread)) goto failed;
     stage = "run-and-report";
-    if (ResumeThread(process.hThread) == (DWORD)-1) goto failed;
     DWORD waited = WaitForSingleObject(process.hProcess, 20000);
     if (waited != WAIT_OBJECT_0) { if (waited == WAIT_FAILED) goto failed; error = ERROR_TIMEOUT; goto done; }
     if (!GetExitCodeProcess(process.hProcess, &exit_code) ||

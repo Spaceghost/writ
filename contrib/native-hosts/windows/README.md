@@ -66,6 +66,7 @@ a native machine-code Bend runtime.
 | `writfs.c` | WinFsp callbacks, immutable byte snapshot, bounded reply decoding, per-open handle ownership, native requester capture, fixture lifecycle and evidence collection |
 | `policy_pipe.c` | Private anonymous pipes to generated Bend; exact executable/module paths, stripped environment, handle allowlist, serialization, timeout and poisoned-connection teardown |
 | `worker.c` | Held executable identity, reduced primary/LPAC token launch, actual-token checks, lifetime binding, job limits, WFP transactions/readback, a separate no-data diagnostic profile and owned-resource cleanup |
+| `worker_resume_test.c` | Real suspended test children exercise successful initial resume and rejection of already-running or still-suspended states |
 | `isolation.c` | Explicit broker/child process ownership and DACLs; a same-SID, medium-integrity outsider probe with administrator group disabled and privileges removed |
 | `probe.c` | Native canary reads and negative probes that Bend cannot directly express; fixed-size reports to the private supervisor |
 | `network_probe.c`, `network_probe.h` | Fixed loopback socket probes, explicit initialization/operation stages, and receiver-side validation of denial evidence; no configurable API hooks |
