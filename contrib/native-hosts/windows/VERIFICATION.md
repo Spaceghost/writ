@@ -13,6 +13,20 @@ contract have separate results.
 
 This record addresses the bounded [native-host canary contract](../../../openspec/specs/native-host-canary-mounts/spec.md), especially NM004 through NM008, and the [private transport protocol](../PROTOCOL.md). It does not complete the broader [Windows host proposal](../../../openspec/changes/add-windows-host/specs/windows-host/spec.md).
 
+## Initial worker resume on 2026-11-22 UTC
+
+The broker now requires the previous suspend count to be exactly one when
+resuming the initial thread of the mount worker or its no-data diagnostic.
+An unexpected state fails that launch and enters its retirement path. Native
+tests at `3508ca7e` exercised fresh Windows child processes and accepted a
+count of one while rejecting zero and two. The ordinary WinFsp fixture and
+native private-pipe transport passed. The strict LPAC fixture again passed
+mounted reads and revocation and failed its confinement gate, with Winsock
+startup `10107` in both network phases.
+[Native run](https://github.com/Spaceghost/writ/actions/runs/44999360408) ·
+[Evidence artifact](https://github.com/Spaceghost/writ/actions/runs/44999360408/artifacts/14745217266) ·
+[Windows resume semantics](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-resumethread)
+
 ## Winsock startup reproduction on 2026-11-22 UTC
 
 On Windows Server 2025 x64 (`10.0.26100`, runner image `20261116.315.1`),
