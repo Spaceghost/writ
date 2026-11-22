@@ -13,6 +13,55 @@ contract have separate results.
 
 This record addresses the bounded [native-host canary contract](../../../openspec/specs/native-host-canary-mounts/spec.md), especially NM004 through NM008, and the [private transport protocol](../PROTOCOL.md). It does not complete the broader [Windows host proposal](../../../openspec/changes/add-windows-host/specs/windows-host/spec.md).
 
+## Winsock startup reproduction on 2026-11-22 UTC
+
+On Windows Server 2025 x64 (`10.0.26100`, runner image `20261116.315.1`),
+the `master` public-canary fixture at `af29ded6` passed mounted reads and
+revocation. The strict byte reader returned `10107` from `WSAStartup` both
+before and after removal of the fixture's WFP filters. All four endpoint
+probes stayed at stage 1 (unattempted). The separate no-data diagnostic
+returned startup status `0` and observed `10013` at socket creation in both
+phases. The strict gate failed with byte-worker confinement incomplete.
+[Native run](https://github.com/Spaceghost/writ/actions/runs/44998391456) ·
+[Native evidence artifact](https://github.com/Spaceghost/writ/actions/runs/44998391456/artifacts/14745285016)
+
+The registry comparison reran the original `deee3ccb` diagnostic on the same
+runner image version. Four distinct no-data LPAC processes shared one fresh
+package and used the same fixed child image with Win32k disabled. The observer
+verified the capability count and the exact enabled `registryRead` SID in each
+B process. Both ordinary controls succeeded, all five synthetic checks passed,
+and the observer completed with no timeout and verified the held child image
+hash. [Registry comparison, attempt 2](https://github.com/Spaceghost/writ/actions/runs/42322440747/attempts/2) ·
+[Comparison artifact](https://github.com/Spaceghost/writ/actions/runs/42322440747/artifacts/14745011187)
+
+| No-data case | Actual token capability | `WSAStartup` | USER32 load | OLE32 load |
+| --- | --- | ---: | ---: | ---: |
+| A1 | None | 10107 | 1114 | 1359 |
+| B1 | `registryRead` | 0 | 1114 | 1359 |
+| B2 | `registryRead` | 0 | 1114 | 1359 |
+| A2 | None | 10107 | 1114 | 1359 |
+
+This repeats the original A/B/B/A result on a newer image. In the earlier
+A/C/C/A comparison, enabling Win32k while keeping the capability count at
+zero left Winsock at `10107` in all four cases. `registryRead` is therefore
+the tested setting most closely associated with successful Winsock startup.
+That is consistent with a registry-access dependency. The runs did not
+observe the failing Windows operation, identify a key or provider, or
+independently read the child environment. The no-data child uses a different
+image and handle set from the byte reader. Error `10107` is the generic
+`WSASYSCALLFAILURE`, and the strict worker has no observed socket denial in
+these phases. [Original registry comparison](https://github.com/Spaceghost/writ/blob/8469acc3/docs/superpowers/records/2026-11-06-windows-init/run-42322440747/README.md) ·
+[Win32k comparison](https://github.com/Spaceghost/writ/blob/babfa801/docs/superpowers/records/2026-11-06-windows-init/run-42323201217/README.md) ·
+[Microsoft LPAC documentation](https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer) ·
+[Winsock error codes](https://learn.microsoft.com/en-us/windows/win32/winsock/windows-sockets-error-codes-2)
+
+GitHub reports archive SHA-256
+`ae9cd967f3fcc285ea42eb418209a973d7ff910ba9819273ba01109c1ad04412`
+for the native fixture and
+`fdd1d7b472fbc59ae7d1762443dc08f4f083fc933a6ede4972521398b55397f9`
+for the registry comparison. These diagnostic results give no confinement
+credit to the strict byte reader.
+
 ## Network evidence classification on 2026-11-11
 
 [Run 43110533402](https://github.com/Spaceghost/writ/actions/runs/43110533402)
